@@ -2,10 +2,10 @@
 
 class AuthController extends BaseController
 {
-    private UserService          $userService;
-    private SessionService       $sessionService;
+    private UserService              $userService;
+    private SessionService           $sessionService;
     private EmailVerificationService $emailVerificationService;
-    private PasswordResetService $passwordResetService;
+    private PasswordResetService     $passwordResetService;
 
     public function __construct(
         UserService              $userService,
@@ -49,20 +49,17 @@ class AuthController extends BaseController
     public function login(UserLoginDTO $dto): void
     {
         try {
-            // UserService devolve ['user', 'token', 'hash']
-            $result = $this->userService->login($dto);
-
-            $user      = $result['user'];
+            $result     = $this->userService->login($dto);
+            $user       = $result['user'];
             $plainToken = $result['token'];
             $tokenHash  = $result['hash'];
 
-            // Criar sessão na BD
             $sessionDTO = new SessionDTO(
                 id:         "",
                 user_id:    $user->id,
                 token_hash: $tokenHash,
-                ip:         $_SERVER['REMOTE_ADDR']       ?? null,
-                user_agent: $_SERVER['HTTP_USER_AGENT']   ?? null,
+                ip:         $_SERVER['REMOTE_ADDR']     ?? null,
+                user_agent: $_SERVER['HTTP_USER_AGENT'] ?? null,
                 expira_em:  date("Y-m-d H:i:s", strtotime("+7 days")),
                 criado_em:  date("Y-m-d H:i:s"),
                 logout_em:  null
@@ -70,7 +67,6 @@ class AuthController extends BaseController
 
             $this->sessionService->create($sessionDTO);
 
-            // Devolver token ao cliente (Angular guarda no localStorage)
             $this->json([
                 "success" => true,
                 "message" => "Login efetuado com sucesso",
@@ -106,6 +102,10 @@ class AuthController extends BaseController
     // VERIFICAR EMAIL
     // ============================================================
 
+       // ============================================================
+    // VERIFICAR EMAIL
+    // ============================================================
+
     public function verifyEmail(string $token): void
     {
         $dto    = new VerifyEmailDTO(token: $token);
@@ -129,7 +129,6 @@ class AuthController extends BaseController
 
     public function forgotPassword(ForgotPasswordDTO $dto): void
     {
-        // Sempre devolve true para não revelar se o email existe
         $this->passwordResetService->requestReset($dto);
 
         $this->json([

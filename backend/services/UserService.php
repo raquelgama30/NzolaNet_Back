@@ -33,23 +33,23 @@ class UserService extends BaseService implements IUserService
         }
 
         $user = new User(
-            id:                  $this->generateUUID(),
-            nome:                $dto->nome,
-            username:            $dto->username,
-            email:               $dto->email,
-            password_hash:       password_hash($dto->password, PASSWORD_DEFAULT),
-            foto_perfil:         null,
-            foto_capa:           null,
-            bio:                 null,
-            data_nascimento:     $dto->data_nascimento,
-            genero:              $dto->genero,
-            privacidade:         "publico",
-            is_admin:            false,
-            is_active:           true,
+            id: $this->generateUUID(),
+            nome: $dto->nome,
+            username: $dto->username,
+            email: $dto->email,
+            password_hash: password_hash($dto->password, PASSWORD_DEFAULT),
+            foto_perfil: null,
+            foto_capa: null,
+            bio: null,
+            data_nascimento: $dto->data_nascimento,
+            genero: $dto->genero,
+            privacidade: "publico",
+            is_admin: false,
+            is_active: true,
             email_verificado_em: null,
-            ultimo_acesso_em:    null,
-            criado_em:           date("Y-m-d H:i:s"),
-            atualizado_em:       date("Y-m-d H:i:s")
+            ultimo_acesso_em: null,
+            criado_em: date("Y-m-d H:i:s"),
+            atualizado_em: date("Y-m-d H:i:s")
         );
 
         $created = $this->userRepository->create($user);
@@ -63,11 +63,11 @@ class UserService extends BaseService implements IUserService
         $tokenHash  = hash("sha256", $plainToken);
 
         $emailToken = new EmailVerificationToken(
-            id:         $this->generateUUID(),
-            user_id:    $user->id,
+            id: $this->generateUUID(),
+            user_id: $user->id,
             token_hash: $tokenHash,
-            expira_em:  date("Y-m-d H:i:s", strtotime("+24 hours")),
-            criado_em:  date("Y-m-d H:i:s")
+            expira_em: date("Y-m-d H:i:s", strtotime("+7 days")),
+            criado_em: date("Y-m-d H:i:s")
         );
 
         $this->emailVerificationRepository->create($emailToken);
@@ -135,23 +135,23 @@ class UserService extends BaseService implements IUserService
     public function updateProfile(string $id, UpdateUserDTO $dto): bool
     {
         $user = new User(
-            id:                  $id,
-            nome:                $dto->nome         ?? "",
-            username:            "",
-            email:               "",
-            password_hash:       "",
-            foto_perfil:         $dto->foto_perfil  ?? null,
-            foto_capa:           $dto->foto_capa    ?? null,
-            bio:                 $dto->bio          ?? null,
-            data_nascimento:     null,
-            genero:              "",
-            privacidade:         $dto->privacidade  ?? "publico",
-            is_admin:            false,
-            is_active:           true,
+            id: $id,
+            nome: $dto->nome         ?? "",
+            username: "",
+            email: "",
+            password_hash: "",
+            foto_perfil: $dto->foto_perfil  ?? null,
+            foto_capa: $dto->foto_capa    ?? null,
+            bio: $dto->bio          ?? null,
+            data_nascimento: null,
+            genero: "",
+            privacidade: $dto->privacidade  ?? "publico",
+            is_admin: false,
+            is_active: true,
             email_verificado_em: null,
-            ultimo_acesso_em:    null,
-            criado_em:           "",
-            atualizado_em:       date("Y-m-d H:i:s")
+            ultimo_acesso_em: null,
+            criado_em: "",
+            atualizado_em: date("Y-m-d H:i:s")
         );
 
         return $this->userRepository->updateProfile($id, $user);
@@ -215,10 +215,10 @@ class UserService extends BaseService implements IUserService
     // PESQUISAR
     // ============================================================
 
-        public function pesquisar(string $query): array
-        {
-            return $this->userRepository->searchUsers($query);
-        }
+    public function pesquisar(string $query): array
+    {
+        return $this->userRepository->searchUsers($query);
+    }
     public function removerFotoPerfil(string $id): bool
     {
         // Buscar o user para saber o URL atual
