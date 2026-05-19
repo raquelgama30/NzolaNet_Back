@@ -12,26 +12,21 @@ class NotificationService extends BaseService implements INotificationService
         $this->notificationRepository = $notificationRepository;
     }
 
-    public function create(
-        NotificationDTO $dto
-    ): bool {
+   public function create(NotificationDTO $dto): bool
+{
+    $notification = new Notification(
+        id:              $this->generateUUID(),
+        destinatario_id: $dto->destinatario_id,
+        remetente_id:    $dto->remetente_id,
+        tipo:            $dto->tipo,
+        referencia_id:   $dto->referencia_id,
+        referencia_tipo: $dto->referencia_tipo,
+        lida:            false,
+        criado_em:       date("Y-m-d H:i:s")
+    );
 
-        $notification = new Notification(
-            id: $this->generateUUID(),
-            destinatario_id: $dto->destinatario_id,
-            remetente_id: $dto->remetente_id,
-            tipo: $dto->tipo,
-            referencia_id: $dto->referencia_id,
-            referencia_tipo: $dto->referencia_tipo,
-            lida: false,
-            criado_em: date("Y-m-d H:i:s")
-        );
-
-        return $this->notificationRepository->create(
-            $notification
-        );
-    }
-
+    return $this->notificationRepository->create($notification);
+}
     public function getByUser(
         string $userId,
         int $page,

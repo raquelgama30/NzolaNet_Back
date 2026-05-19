@@ -28,7 +28,7 @@ class NotificationRepository implements INotificationRepository
                 :tipo,
                 :referencia_id,
                 :referencia_tipo,
-                0,
+                false,
                 :criado_em
             )
         ";
@@ -36,39 +36,26 @@ class NotificationRepository implements INotificationRepository
         $stmt = $this->conn->prepare($sql);
 
         return $stmt->execute([
-            ":id" => $notification->id,
+            ":id"              => $notification->id,
             ":destinatario_id" => $notification->destinatario_id,
-            ":remetente_id" => $notification->remetente_id,
-            ":tipo" => $notification->tipo,
-            ":referencia_id" => $notification->referencia_id,
+            ":remetente_id"    => $notification->remetente_id,
+            ":tipo"            => $notification->tipo,
+            ":referencia_id"   => $notification->referencia_id,
             ":referencia_tipo" => $notification->referencia_tipo,
-            ":criado_em" => $notification->criado_em
+            ":criado_em"       => $notification->criado_em
         ]);
     }
 
     public function findById(string $notificationId): ?NotificationDTO
     {
-        $sql = "SELECT * FROM notifications WHERE id = :id LIMIT 1";
-
+        $sql  = "SELECT * FROM notifications WHERE id = :id LIMIT 1";
         $stmt = $this->conn->prepare($sql);
         $stmt->execute([":id" => $notificationId]);
 
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$result) return null;
 
-        if (!$result) {
-            return null;
-        }
-
-        return new NotificationDTO(
-            id: $result['id'],
-            destinatario_id: $result['destinatario_id'],
-            remetente_id: $result['remetente_id'],
-            tipo: $result['tipo'],
-            referencia_id: $result['referencia_id'] ?? null,
-            referencia_tipo: $result['referencia_tipo'] ?? null,
-            lida: (bool) $result['lida'],
-            criado_em: $result['criado_em']
-        );
+        return $this->mapToDTO($result);
     }
 
     public function getByUser(string $userId, int $page, int $limit): array
@@ -85,17 +72,16 @@ class NotificationRepository implements INotificationRepository
 
         $stmt = $this->conn->prepare($sql);
         $stmt->bindValue(":user_id", $userId);
-        $stmt->bindValue(":limit", $limit, PDO::PARAM_INT);
-        $stmt->bindValue(":offset", $offset, PDO::PARAM_INT);
+        $stmt->bindValue(":limit",   $limit,  PDO::PARAM_INT);
+        $stmt->bindValue(":offset",  $offset, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map([$this, 'mapToDTO'], $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     public function markAsRead(string $notificationId): bool
     {
-        $sql = "UPDATE notifications SET lida = 1 WHERE id = :id";
-
+        $sql  = "UPDATE notifications SET lida = true WHERE id = :id";
         $stmt = $this->conn->prepare($sql);
         return $stmt->execute([":id" => $notificationId]);
     }
@@ -104,10 +90,9 @@ class NotificationRepository implements INotificationRepository
     {
         $sql = "
             UPDATE notifications
-            SET lida = 1
+            SET lida = true
             WHERE destinatario_id = :user_id
         ";
-
         $stmt = $this->conn->prepare($sql);
         return $stmt->execute([":user_id" => $userId]);
     }
@@ -118,12 +103,28 @@ class NotificationRepository implements INotificationRepository
             SELECT COUNT(*)
             FROM notifications
             WHERE destinatario_id = :user_id
-            AND lida = 0
+            AND lida = false
         ";
-
         $stmt = $this->conn->prepare($sql);
         $stmt->execute([":user_id" => $userId]);
-
         return (int) $stmt->fetchColumn();
+    }
+
+    // ============================================================
+    // MAPPER
+    // ============================================================
+
+    private function mapToDTO(array $data): NotificationDTO
+    {
+        return new NotificationDTO(
+            id:              $data['id'],
+            destinatario_id: $data['destinatario_id'],
+            remetente_id:    $data['remetente_id'],
+            tipo:            $data['tipo'],
+            referencia_id:   $data['referencia_id']   ?? null,
+            referencia_tipo: $data['referencia_tipo'] ?? null,
+            lida:            (bool) $data['lida'],
+            criado_em:       $data['criado_em']
+        );
     }
 }

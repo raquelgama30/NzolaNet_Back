@@ -17,7 +17,6 @@ class FollowService extends BaseService implements IFollowService
         $this->followRepository = $followRepository;
         $this->userRepository   = $userRepository;
         $this->notificationService    = $notificationService;
-
     }
 
     // ============================================================
@@ -92,7 +91,6 @@ class FollowService extends BaseService implements IFollowService
         }
         if ($created) {
             if ($status === 'aceite') {
-                // Notificar que tem novo seguidor
                 $notifDto = new NotificationDTO(
                     id: "",
                     destinatario_id: $seguidoId,
@@ -105,7 +103,7 @@ class FollowService extends BaseService implements IFollowService
                 );
                 $this->notificationService->create($notifDto);
             } else {
-                // Notificar que tem pedido pendente
+                // perfil privado — envia pedido_follow
                 $notifDto = new NotificationDTO(
                     id: "",
                     destinatario_id: $seguidoId,
