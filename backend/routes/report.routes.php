@@ -5,15 +5,16 @@ $action = $_GET['action'] ?? null;
 
 switch ($action) {
 
-    // POST ?route=report&action=create  (utilizador autenticado)
     case 'create':
 
-        $authUser   = $authMiddleware->handle();
-        $controller = new ReportController($reportService);
+        $authUser       = $authMiddleware->handle();
+        $controller     = new ReportController($reportService);
+
+        $referenciaTipo = $input['referencia_tipo'] ?? '';
+        $referenciaId   = $input['referencia_id']   ?? '';
+        $motivo         = $input['motivo']           ?? '';
 
         // Validar referencia_tipo
-        $referenciaTipo = $input['referencia_tipo'] ?? '';
-
         if (!in_array($referenciaTipo, ['post', 'comment', 'user'])) {
             http_response_code(400);
             echo json_encode([
@@ -33,8 +34,6 @@ switch ($action) {
             'outro'
         ];
 
-        $motivo = $input['motivo'] ?? '';
-
         if (!in_array($motivo, $motivosValidos)) {
             http_response_code(400);
             echo json_encode([
@@ -44,13 +43,53 @@ switch ($action) {
             exit();
         }
 
+        // ── Impedir reportar a si próprio ─────────────────────
+
+        // Não podes reportar o teu próprio perfil
+        if ($referenciaTipo === 'user' && $referenciaId === $authUser->id) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "message" => "Não podes reportar o teu próprio perfil"
+            ]);
+            exit();
+        }
+
+        // Não podes reportar os teus próprios posts
+        if ($referenciaTipo === 'post') {
+            $post = $postService->getById($referenciaId, $authUser->id);
+
+            if ($post && $post->user_id === $authUser->id) {
+                http_response_code(400);
+                echo json_encode([
+                    "success" => false,
+                    "message" => "Não podes reportar os teus próprios posts"
+                ]);
+                exit();
+            }
+        }
+
+        // Não podes reportar os teus próprios comentários
+        if ($referenciaTipo === 'comment') {
+            $comment = $commentService->getById($referenciaId);
+
+            if ($comment && $comment->user_id === $authUser->id) {
+                http_response_code(400);
+                echo json_encode([
+                    "success" => false,
+                    "message" => "Não podes reportar os teus próprios comentários"
+                ]);
+                exit();
+            }
+        }
+
         $dto = new ReportDTO(
             id:              "",
             reporter_id:     $authUser->id,
-            referencia_id:   $input['referencia_id']  ?? '',
+            referencia_id:   $referenciaId,
             referencia_tipo: $referenciaTipo,
             motivo:          $motivo,
-            descricao:       $input['descricao']      ?? null,
+            descricao:       $input['descricao'] ?? null,
             status:          "pendente",
             resolvido_por:   null,
             criado_em:       "",
@@ -60,9 +99,7 @@ switch ($action) {
         $controller->create($authUser->id, $dto);
         break;
 
-    // GET ?route=report&action=listarReports&page=1&limit=20  (admin)
     case 'listarReports':
-
         $adminMiddleware->handle();
         $controller = new ReportController($reportService);
         $page       = (int) ($_GET['page']  ?? 1);
@@ -70,18 +107,14 @@ switch ($action) {
         $controller->getAll($page, $limit);
         break;
 
-    // PUT ?route=report&action=resolver  (admin)
     case 'resolver':
-
         $adminUser  = $adminMiddleware->handle();
         $controller = new ReportController($reportService);
         $reportId   = $input['id'] ?? '';
         $controller->resolve($reportId, $adminUser->id);
         break;
 
-    // PUT ?route=report&action=ignorar  (admin)
     case 'ignorar':
-
         $adminMiddleware->handle();
         $controller = new ReportController($reportService);
         $reportId   = $input['id'] ?? '';

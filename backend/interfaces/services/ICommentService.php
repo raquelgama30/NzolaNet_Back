@@ -1,6 +1,7 @@
 <?php
 
-interface ICommentService {
+interface ICommentService
+{
 
     public function create(string $userId, CommentDTO $dto): bool;
 
@@ -12,4 +13,6 @@ interface ICommentService {
     public function deleteByAdmin(string $commentId): bool;
 
     public function getByPost(string $postId, int $page, int $limit): array;
+    
+    public function getById(string $commentId): ?CommentDTO;
 }
