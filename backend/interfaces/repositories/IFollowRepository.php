@@ -26,4 +26,6 @@ interface IFollowRepository {
 
     /** @return FollowDTO[] */
     public function getPedidosPendentes(string $userId): array;
+
+    public function deleteAllByUserId(string $userId): bool;
 }

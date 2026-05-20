@@ -7,15 +7,36 @@ class UserService extends BaseService implements IUserService
     private IUserRepository              $userRepository;
     private IEmailVerificationRepository $emailVerificationRepository;
     private EmailService                 $emailService;
+    private IPostService                 $postService;        // NOVO
+    private IPostRepository              $postRepository;     // NOVO
+    private IFollowRepository            $followRepository;    // NOVO
+    private IBlockRepository             $blockRepository;     // NOVO
+    private IConversationRepository      $conversationRepository; // NOVO
+    private IMessageRepository           $messageRepository;   // NOVO
+    private ISessionRepository           $sessionRepository;    // NOVO
 
     public function __construct(
         IUserRepository              $userRepository,
         IEmailVerificationRepository $emailVerificationRepository,
-        EmailService                 $emailService
+        EmailService                 $emailService,
+        IPostService                 $postService,
+        IPostRepository              $postRepository,
+        IFollowRepository            $followRepository,
+        IBlockRepository             $blockRepository,
+        IConversationRepository      $conversationRepository,
+        IMessageRepository           $messageRepository,
+        ISessionRepository           $sessionRepository
     ) {
         $this->userRepository              = $userRepository;
         $this->emailVerificationRepository = $emailVerificationRepository;
         $this->emailService                = $emailService;
+        $this->postService                 = $postService;
+        $this->postRepository              = $postRepository;
+        $this->followRepository            = $followRepository;
+        $this->blockRepository             = $blockRepository;
+        $this->conversationRepository      = $conversationRepository;
+        $this->messageRepository           = $messageRepository;
+        $this->sessionRepository           = $sessionRepository;
     }
 
     // ============================================================
@@ -29,15 +50,15 @@ class UserService extends BaseService implements IUserService
         if ($this->userRepository->findByEmail($dto->email)) {
             throw new Exception("Este email já está registado");
         }
-        error_log("find email: " . round(microtime(true)-$start,2));
+        error_log("find email: " . round(microtime(true) - $start, 2));
 
         if ($this->userRepository->findByUsername($dto->username)) {
             throw new Exception("Este username já está em uso");
         }
-        error_log("find username: " . round(microtime(true)-$start,2));
+        error_log("find username: " . round(microtime(true) - $start, 2));
 
         $hash = password_hash($dto->password, PASSWORD_DEFAULT);
-        error_log("hash: " . round(microtime(true)-$start,2));
+        error_log("hash: " . round(microtime(true) - $start, 2));
 
         $user = new User(
             id: $this->generateUUID(),
@@ -60,7 +81,7 @@ class UserService extends BaseService implements IUserService
         );
 
         $created = $this->userRepository->create($user);
-        error_log("insert user: " . round(microtime(true)-$start,2));
+        error_log("insert user: " . round(microtime(true) - $start, 2));
 
         if (!$created) {
             throw new Exception("Erro ao criar utilizador");
@@ -78,23 +99,22 @@ class UserService extends BaseService implements IUserService
         );
 
         $this->emailVerificationRepository->create($emailToken);
-        error_log("insert token: " . round(microtime(true)-$start,2));
+        error_log("insert token: " . round(microtime(true) - $start, 2));
 
         $this->emailService->sendVerificationEmail(
             $dto->email,
             $dto->nome,
             $plainToken
         );
-        error_log("email send: " . round(microtime(true)-$start,2));
+        error_log("email send: " . round(microtime(true) - $start, 2));
 
-        error_log("TOTAL: " . round(microtime(true)-$start,2));
+        error_log("TOTAL: " . round(microtime(true) - $start, 2));
 
         return $this->userRepository->findById($user->id);
     }
     // ============================================================
     // LOGIN
     // ============================================================
-
     public function login(UserLoginDTO $dto): array
     {
         $user = $this->userRepository->findByEmail($dto->email);
@@ -103,8 +123,14 @@ class UserService extends BaseService implements IUserService
             throw new Exception("Credenciais inválidas");
         }
 
+        // Verificar se a conta está activa
         if (!$user->is_active) {
             throw new Exception("Conta desativada");
+        }
+
+        // Verificar se o email foi confirmado
+        if (!$user->email_verificado_em) {
+            throw new Exception("Email não verificado. Verifica o teu email antes de fazer login.");
         }
 
         $userWithHash = $this->userRepository->findByEmailWithHash($dto->email);
@@ -213,15 +239,6 @@ class UserService extends BaseService implements IUserService
     }
 
     // ============================================================
-    // ELIMINAR / DESATIVAR
-    // ============================================================
-
-    public function deleteUser(string $id): bool
-    {
-        return $this->userRepository->deactivate($id);
-    }
-
-    // ============================================================
     // PESQUISAR
     // ============================================================
 
@@ -262,20 +279,44 @@ class UserService extends BaseService implements IUserService
         return $this->userRepository->removerFotoCapa($id);
     }
 
-    // ============================================================
-    // HELPER — apaga ficheiro físico do servidor
-    // ============================================================
+    public function deleteUser(string $id): bool
+    {
+        $user = $this->userRepository->findById($id);
+        if (!$user) return false;
+
+        // 1. Apagar ficheiros de perfil/capa
+        if ($user->foto_perfil) $this->apagarFicheiro($user->foto_perfil);
+        if ($user->foto_capa) $this->apagarFicheiro($user->foto_capa);
+
+        // 2. Eliminar todos os posts (com cascata: media, bazes, comentários, shares)
+        $posts = $this->postRepository->getFeedByUser($id, 1, 9999);
+        foreach ($posts as $post) {
+            $this->postService->delete($post->id, $id);
+        }
+
+        // 3. Eliminar follows
+        $this->followRepository->deleteAllByUserId($id);
+
+        // 4. Eliminar blocks
+        $this->blockRepository->deleteAllByUserId($id);
+
+        // 5. Eliminar conversas (mensagens apagam em cascata)
+        $conversas = $this->conversationRepository->getByUser($id);
+        foreach ($conversas as $conversa) {
+            $this->conversationRepository->delete($conversa->id);
+        }
+
+        // 6. Terminar sessões
+        $this->sessionRepository->deleteAllByUserId($id);
+
+        // 7. Desativar
+        return $this->userRepository->deactivate($id);
+    }
 
     private function apagarFicheiro(string $url): void
     {
-        // URL exemplo:
-        // http://localhost:8081/NzolaNet/backend/uploads/perfil/abc123.jpg
-        // http://localhost:8081/NzolaNet/backend/uploads/capa/abc123.jpg
-
         $baseUrl  = "http://localhost:8081/NzolaNet/backend/";
         $caminho  = str_replace($baseUrl, "", $url);
-
-        // dirname(__DIR__) = C:\xampp\htdocs\NzolaNet\backend
         $raiz     = dirname(__DIR__);
         $ficheiro = $raiz . DIRECTORY_SEPARATOR . str_replace("/", DIRECTORY_SEPARATOR, $caminho);
 

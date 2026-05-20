@@ -25,10 +25,10 @@ class BazeService extends BaseService implements IBazeService
         }
 
         $baze = new Baze(
-            id:         $this->generateUUID(),
-            user_id:    $userId,
-            post_id:    $postId,
-            criado_em:  date("Y-m-d H:i:s")
+            id: $this->generateUUID(),
+            user_id: $userId,
+            post_id: $postId,
+            criado_em: date("Y-m-d H:i:s")
         );
 
         $created = $this->bazeRepository->create($baze);
@@ -40,14 +40,16 @@ class BazeService extends BaseService implements IBazeService
             // Não notificar a si próprio
             if ($post && $post->user_id !== $userId) {
                 $dto = new NotificationDTO(
-                    id:              "",
+                    id: "",
                     destinatario_id: $post->user_id,
-                    remetente_id:    $userId,
-                    tipo:            "baze",
-                    referencia_id:   $postId,
+                    remetente_id: $userId,
+                    tipo: "baze",
+                    referencia_id: $postId,
                     referencia_tipo: "post",
-                    lida:            false,
-                    criado_em:       ""
+                    lida: false,
+                    agrupada: false,        // ← NOVO
+                    contagem_agrupada: 1,
+                    criado_em: ""
                 );
                 $this->notificationService->create($dto);
             }

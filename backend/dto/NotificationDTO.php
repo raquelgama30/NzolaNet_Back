@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-class NotificationDTO {
-
+class NotificationDTO
+{
     public function __construct(
         public string $id,
         public string $destinatario_id,
@@ -12,6 +12,8 @@ class NotificationDTO {
         public ?string $referencia_id,
         public ?string $referencia_tipo,
         public bool $lida,
+        public bool $agrupada,
+        public int $contagem_agrupada,
         public string $criado_em
     ) {}
 }

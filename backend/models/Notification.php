@@ -12,6 +12,8 @@ class Notification
         public ?string $referencia_id,
         public ?string $referencia_tipo,
         public bool $lida,
+        public bool $agrupada,
+        public int $contagem_agrupada,
         public string $criado_em
     ) {}
 }

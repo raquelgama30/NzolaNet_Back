@@ -18,4 +18,6 @@ interface IBlockRepository {
     public function getBlocked(
         string $userId
     ): array;
+
+    public function deleteAllByUserId(string $userId): bool;
 }

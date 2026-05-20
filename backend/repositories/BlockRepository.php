@@ -82,4 +82,10 @@ class BlockRepository implements IBlockRepository
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    public function deleteAllByUserId(string $userId): bool
+    {
+        $sql = "DELETE FROM blocks WHERE bloqueador_id = :user_id OR bloqueado_id = :user_id";
+        $stmt = $this->conn->prepare($sql);
+        return $stmt->execute([":user_id" => $userId]);
+    }
 }

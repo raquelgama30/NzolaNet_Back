@@ -21,4 +21,5 @@ interface IPostService {
         int    $limit
     ): array;
     public function getById(string $postId, string $authUserId): ?PostComMediaDTO;
+    public function deleteByAdmin(string $postId): bool;
 }

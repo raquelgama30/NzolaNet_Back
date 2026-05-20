@@ -88,7 +88,7 @@ class ConversationRepository implements IConversationRepository
             $data['criado_em']
         );
     }
-        public function getByUser(string $userId): array
+    public function getByUser(string $userId): array
     {
         $sql = "
             SELECT *
@@ -102,5 +102,11 @@ class ConversationRepository implements IConversationRepository
         $stmt->execute([":user_id" => $userId]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public function delete(string $conversationId): bool
+    {
+        $sql = "DELETE FROM conversations WHERE id = :id";
+        $stmt = $this->conn->prepare($sql);
+        return $stmt->execute([":id" => $conversationId]);
     }
 }

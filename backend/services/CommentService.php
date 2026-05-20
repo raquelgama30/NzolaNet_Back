@@ -7,19 +7,33 @@ class CommentService extends BaseService implements ICommentService
     private ICommentRepository   $commentRepository;
     private INotificationService $notificationService;
     private IPostRepository      $postRepository;
+    private IBlockRepository     $blockRepository;
 
     public function __construct(
         ICommentRepository   $commentRepository,
         INotificationService $notificationService,
-        IPostRepository      $postRepository
+        IPostRepository      $postRepository,
+        IBlockRepository     $blockRepository
     ) {
         $this->commentRepository   = $commentRepository;
         $this->notificationService = $notificationService;
         $this->postRepository      = $postRepository;
+        $this->blockRepository     = $blockRepository;
     }
 
     public function create(string $userId, CommentDTO $dto): bool
     {
+        $post = $this->postRepository->findById($dto->post_id);
+        if (!$post) throw new Exception("Publicação não encontrada");
+
+        // NOVO: Verificar blocks
+        if ($this->blockRepository->isBlocked($post->user_id, $userId)) {
+            throw new Exception("Não podes comentar nesta publicação");
+        }
+        if ($this->blockRepository->isBlocked($userId, $post->user_id)) {
+            throw new Exception("Desbloqueia o autor primeiro");
+        }
+
         $comment = new Comment(
             id: $this->generateUUID(),
             user_id: $userId,
@@ -33,29 +47,23 @@ class CommentService extends BaseService implements ICommentService
 
         $created = $this->commentRepository->create($comment);
 
-        if ($created) {
-            // Buscar dono do post
-            $post = $this->postRepository->findById($dto->post_id);
-
-            // Não notificar a si próprio
-            if ($post && $post->user_id !== $userId) {
-                $dto = new NotificationDTO(
-                    id: "",
-                    destinatario_id: $post->user_id,
-                    remetente_id: $userId,
-                    tipo: "comentario",
-                    referencia_id: $dto->post_id,
-                    referencia_tipo: "post",
-                    lida: false,
-                    criado_em: ""
-                );
-                $this->notificationService->create($dto);
-            }
+        if ($created && $post->user_id !== $userId) {
+            $this->notificationService->create(new NotificationDTO(
+                id: "",
+                destinatario_id: $post->user_id,
+                remetente_id: $userId,
+                tipo: "comentario",
+                referencia_id: $dto->post_id,
+                referencia_tipo: "post",
+                agrupada: false,        // ← NOVO
+                contagem_agrupada: 1,
+                lida: false,
+                criado_em: ""
+            ));
         }
 
         return $created;
     }
-
 
     public function deleteByAdmin(string $commentId): bool
     {
@@ -71,6 +79,7 @@ class CommentService extends BaseService implements ICommentService
     {
         return $this->commentRepository->getByPost($postId, $page, $limit);
     }
+
     public function getById(string $commentId): ?CommentDTO
     {
         return $this->commentRepository->findById($commentId);
@@ -79,15 +88,8 @@ class CommentService extends BaseService implements ICommentService
     public function update(string $commentId, CommentDTO $dto): bool
     {
         $comment = $this->commentRepository->findById($commentId);
-
-        if (!$comment) {
-            throw new Exception("Comentário não encontrado");
-        }
-
-        // Verificar se é o dono
-        if ($comment->user_id !== $dto->user_id) {
-            throw new Exception("Não tens permissão para editar este comentário");
-        }
+        if (!$comment) throw new Exception("Comentário não encontrado");
+        if ($comment->user_id !== $dto->user_id) throw new Exception("Não tens permissão");
 
         return $this->commentRepository->update($commentId, $dto);
     }
@@ -95,15 +97,8 @@ class CommentService extends BaseService implements ICommentService
     public function delete(string $commentId, string $authUserId): bool
     {
         $comment = $this->commentRepository->findById($commentId);
-
-        if (!$comment) {
-            throw new Exception("Comentário não encontrado");
-        }
-
-        // Verificar se é o dono
-        if ($comment->user_id !== $authUserId) {
-            throw new Exception("Não tens permissão para eliminar este comentário");
-        }
+        if (!$comment) throw new Exception("Comentário não encontrado");
+        if ($comment->user_id !== $authUserId) throw new Exception("Não tens permissão");
 
         return $this->commentRepository->delete($commentId);
     }

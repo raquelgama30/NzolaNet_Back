@@ -138,28 +138,28 @@ class FollowRepository implements IFollowRepository
     }
 
     public function updateStatus(
-    string $seguidorId,
-    string $seguidoId,
-    string $status
-): bool {
-    $sql = "
+        string $seguidorId,
+        string $seguidoId,
+        string $status
+    ): bool {
+        $sql = "
         UPDATE follows
         SET status = :status
         WHERE seguidor_id = :seguidor_id
         AND seguido_id = :seguido_id
     ";
 
-    $stmt = $this->conn->prepare($sql);
-    return $stmt->execute([
-        ":status"      => $status,
-        ":seguidor_id" => $seguidorId,
-        ":seguido_id"  => $seguidoId
-    ]);
-}
+        $stmt = $this->conn->prepare($sql);
+        return $stmt->execute([
+            ":status"      => $status,
+            ":seguidor_id" => $seguidorId,
+            ":seguido_id"  => $seguidoId
+        ]);
+    }
 
-public function getPedidosPendentes(string $userId): array
-{
-    $sql = "
+    public function getPedidosPendentes(string $userId): array
+    {
+        $sql = "
         SELECT f.*, u.nome, u.username, u.foto_perfil
         FROM follows f
         INNER JOIN users u ON u.id = f.seguidor_id
@@ -168,9 +168,15 @@ public function getPedidosPendentes(string $userId): array
         ORDER BY f.criado_em DESC
     ";
 
-    $stmt = $this->conn->prepare($sql);
-    $stmt->execute([":user_id" => $userId]);
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([":user_id" => $userId]);
 
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public function deleteAllByUserId(string $userId): bool
+    {
+        $sql = "DELETE FROM follows WHERE seguidor_id = :user_id OR seguido_id = :user_id";
+        $stmt = $this->conn->prepare($sql);
+        return $stmt->execute([":user_id" => $userId]);
+    }
 }

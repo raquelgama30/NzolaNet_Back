@@ -19,4 +19,5 @@ interface IConversationRepository {
     public function getByUser(
         string $userId
     ): array;
+    public function delete(string $conversationId): bool;
 }

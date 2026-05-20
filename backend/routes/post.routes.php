@@ -9,12 +9,22 @@ switch ($action) {
 
     // POST ?route=post&action=criar
     case 'criar':
+        // NOVO: Verificar se email está verificado
+        if (!$authUser->email_verificado_em) {
+            http_response_code(403);
+            echo json_encode([
+                "success" => false,
+                "message" => "Verifica o teu email antes de publicar. Checka o teu inbox."
+            ]);
+            exit();
+        }
+
         $dto = new PostDTO(
-            id:            "",
-            user_id:       $authUser->id,
-            conteudo:      $input['conteudo'] ?? null,
-            eliminado:     false,
-            criado_em:     "",
+            id: "",
+            user_id: $authUser->id,
+            conteudo: $input['conteudo'] ?? null,
+            eliminado: false,
+            criado_em: "",
             atualizado_em: ""
         );
         $controller->create($authUser->id, $dto);
@@ -25,11 +35,11 @@ switch ($action) {
     case 'editar':
         $id  = $input['id'] ?? '';
         $dto = new PostDTO(
-            id:            $id,
-            user_id:       $authUser->id,
-            conteudo:      $input['conteudo'] ?? null,
-            eliminado:     false,
-            criado_em:     "",
+            id: $id,
+            user_id: $authUser->id,
+            conteudo: $input['conteudo'] ?? null,
+            eliminado: false,
+            criado_em: "",
             atualizado_em: ""
         );
         $controller->update($id, $dto);

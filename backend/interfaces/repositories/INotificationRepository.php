@@ -25,7 +25,12 @@ interface INotificationRepository {
         string $userId
     ): bool;
 
-    public function countUnread(
-        string $userId
-    ): int;
+    public function countUnread(string $userId): int;
+    public function findSimilar(
+    string $destinatarioId,
+    string $tipo,
+    ?string $referenciaId
+): ?NotificationDTO;
+
+public function incrementarContagem(string $notificationId): bool;
 }

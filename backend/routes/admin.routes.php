@@ -100,18 +100,14 @@ switch ($action) {
 
             case 'eliminar_post':
                 if ($report->referencia_tipo === 'post') {
-                    // Admin passa o seu próprio id como authUserId
-                    // para contornar a verificação de autoria
+                    // CORRIGIDO: Usar PostService em vez de repository direto
                     $post = $postService->getById(
                         $report->referencia_id,
                         $adminUser->id
                     );
                     if ($post) {
-                        // Apagar directamente pelo repository sem verificar autoria
-                        $postRepository->delete($report->referencia_id);
-                        $mediaRepository->deleteByPost($report->referencia_id);
-                        $bazeRepository->deleteByPost($report->referencia_id);
-                        $commentRepository->deleteByPost($report->referencia_id);
+                        // Usar deleteByAdmin do PostService para cascata completa
+                        $postService->deleteByAdmin($report->referencia_id);
                     }
                 }
                 $reportController->resolve($reportId, $adminUser->id);
@@ -129,7 +125,6 @@ switch ($action) {
 
                 if ($report->referencia_tipo === 'user') {
                     $userIdParaDesativar = $report->referencia_id;
-
                 } elseif ($report->referencia_tipo === 'post') {
                     $post = $postService->getById(
                         $report->referencia_id,
@@ -138,7 +133,6 @@ switch ($action) {
                     if ($post) {
                         $userIdParaDesativar = $post->user_id;
                     }
-
                 } elseif ($report->referencia_tipo === 'comment') {
                     $comment = $commentService->getById($report->referencia_id);
                     if ($comment) {

@@ -79,6 +79,7 @@ require_once __DIR__ . "/interfaces/repositories/ISessionRepository.php";
 require_once __DIR__ . "/interfaces/repositories/IEmailVerificationRepository.php";
 require_once __DIR__ . "/interfaces/repositories/IPasswordResetRepository.php";
 require_once __DIR__ . "/interfaces/repositories/IPostRepository.php";
+require_once __DIR__ . "/interfaces/repositories/IPostShareRepository.php";
 require_once __DIR__ . "/interfaces/repositories/IMediaRepository.php";
 require_once __DIR__ . "/interfaces/repositories/ICommentRepository.php";
 require_once __DIR__ . "/interfaces/repositories/IBazeRepository.php";
@@ -134,6 +135,7 @@ require_once __DIR__ . "/repositories/NotificationRepository.php";
 require_once __DIR__ . "/repositories/MessageRepository.php";
 require_once __DIR__ . "/repositories/ConversationRepository.php";
 require_once __DIR__ . "/repositories/ReportRepository.php";
+require_once __DIR__ . "/repositories/PostShareRepository.php";
 
 // ============================================================
 // AUTOLOAD — Services
@@ -194,6 +196,7 @@ $sessionRepository           = new SessionRepository($conn);
 $emailVerificationRepository = new EmailVerificationRepository($conn);
 $passwordResetRepository     = new PasswordResetRepository($conn);
 $postRepository              = new PostRepository($conn);
+$postShareRepository         = new PostShareRepository($conn);
 $mediaRepository             = new MediaRepository($conn);
 $commentRepository           = new CommentRepository($conn);
 $bazeRepository              = new BazeRepository($conn);
@@ -212,11 +215,28 @@ $reportRepository            = new ReportRepository($conn);
 // ============================================================
 
 $emailService = new EmailService();
+// Atualizar PostService
 
+$postService = new PostService(
+    $postRepository,
+    $mediaRepository,
+    $bazeRepository,
+    $commentRepository,
+    $userRepository,
+    $postShareRepository  // NOVO
+);
+// Atualizar UserService
 $userService = new UserService(
     $userRepository,
     $emailVerificationRepository,
-    $emailService
+    $emailService,
+    $postService,        // NOVO
+    $postRepository,     // NOVO
+    $followRepository,   // NOVO
+    $blockRepository,    // NOVO
+    $conversationRepository, // NOVO
+    $messageRepository,  // NOVO
+    $sessionRepository   // NOVO
 );
 
 $sessionService = new SessionService($sessionRepository);
@@ -252,41 +272,36 @@ $bazeService = new BazeService(
     $postRepository
 );
 
+// Atualizar CommentService
 $commentService = new CommentService(
     $commentRepository,
     $notificationService,
-    $postRepository
+    $postRepository,
+    $blockRepository  // NOVO
 );
 
 $followService = new FollowService(
     $followRepository,
     $userRepository,
-    $notificationService
+    $notificationService,
+    $blockRepository  // NOVO
 );
-
 $conversationService = new ConversationService($conversationRepository);
-
+// Atualizar MessageService
 $messageService = new MessageService(
     $messageRepository,
     $conversationRepository,
-    $notificationService
+    $notificationService,
+    $blockRepository  // NOVO
 );
-
 $reportService = new ReportService(
     $reportRepository,
     $userRepository,
     $notificationService
 );
 
-// ── postService POR ÚLTIMO porque depende de baze, comment, media e user ──
 
-$postService = new PostService(
-    $postRepository,
-    $mediaRepository,
-    $bazeRepository,
-    $commentRepository,
-    $userRepository
-);
+
 // ============================================================
 // INSTANCIAR MIDDLEWARE
 // ============================================================
@@ -354,6 +369,10 @@ switch ($route) {
 
     case 'media':
         require_once __DIR__ . "/routes/media.routes.php";
+        break;
+
+    case 'block':
+        require_once 'routes/block.routes.php';
         break;
 
     default:
