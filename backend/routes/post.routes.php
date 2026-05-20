@@ -38,7 +38,7 @@ switch ($action) {
     // DELETE ?route=post&action=eliminar
     case 'eliminar':
         $id = $input['id'] ?? $_GET['id'] ?? '';
-        $controller->delete($id);
+        $controller->delete($id, $authUser->id);
         break;
 
     // GET ?route=post&action=meusPosts&page=1&limit=10

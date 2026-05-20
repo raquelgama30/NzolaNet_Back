@@ -56,15 +56,6 @@ class CommentService extends BaseService implements ICommentService
         return $created;
     }
 
-    public function update(string $commentId, CommentDTO $dto): bool
-    {
-        return $this->commentRepository->update($commentId, $dto);
-    }
-
-    public function delete(string $commentId): bool
-    {
-        return $this->commentRepository->delete($commentId);
-    }
 
     public function deleteByAdmin(string $commentId): bool
     {
@@ -83,5 +74,37 @@ class CommentService extends BaseService implements ICommentService
     public function getById(string $commentId): ?CommentDTO
     {
         return $this->commentRepository->findById($commentId);
+    }
+
+    public function update(string $commentId, CommentDTO $dto): bool
+    {
+        $comment = $this->commentRepository->findById($commentId);
+
+        if (!$comment) {
+            throw new Exception("Comentário não encontrado");
+        }
+
+        // Verificar se é o dono
+        if ($comment->user_id !== $dto->user_id) {
+            throw new Exception("Não tens permissão para editar este comentário");
+        }
+
+        return $this->commentRepository->update($commentId, $dto);
+    }
+
+    public function delete(string $commentId, string $authUserId): bool
+    {
+        $comment = $this->commentRepository->findById($commentId);
+
+        if (!$comment) {
+            throw new Exception("Comentário não encontrado");
+        }
+
+        // Verificar se é o dono
+        if ($comment->user_id !== $authUserId) {
+            throw new Exception("Não tens permissão para eliminar este comentário");
+        }
+
+        return $this->commentRepository->delete($commentId);
     }
 }

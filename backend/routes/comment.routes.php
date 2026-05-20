@@ -41,7 +41,7 @@ switch ($action) {
     // DELETE ?route=comment&action=delete
     case 'delete':
         $id = $input['id'] ?? $_GET['id'] ?? '';
-        $controller->delete($id);
+        $controller->delete($id, $authUser->id);
         break;
 
     // GET ?route=comment&action=getByPost&post_id=XXX&page=1&limit=10

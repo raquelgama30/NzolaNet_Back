@@ -24,20 +24,27 @@ class UserService extends BaseService implements IUserService
 
     public function register(UserRegisterDTO $dto): UserDTO
     {
+        $start = microtime(true);
+
         if ($this->userRepository->findByEmail($dto->email)) {
             throw new Exception("Este email já está registado");
         }
+        error_log("find email: " . round(microtime(true)-$start,2));
 
         if ($this->userRepository->findByUsername($dto->username)) {
             throw new Exception("Este username já está em uso");
         }
+        error_log("find username: " . round(microtime(true)-$start,2));
+
+        $hash = password_hash($dto->password, PASSWORD_DEFAULT);
+        error_log("hash: " . round(microtime(true)-$start,2));
 
         $user = new User(
             id: $this->generateUUID(),
             nome: $dto->nome,
             username: $dto->username,
             email: $dto->email,
-            password_hash: password_hash($dto->password, PASSWORD_DEFAULT),
+            password_hash: $hash,
             foto_perfil: null,
             foto_capa: null,
             bio: null,
@@ -53,12 +60,12 @@ class UserService extends BaseService implements IUserService
         );
 
         $created = $this->userRepository->create($user);
+        error_log("insert user: " . round(microtime(true)-$start,2));
 
         if (!$created) {
             throw new Exception("Erro ao criar utilizador");
         }
 
-        // Gerar token de verificação de email
         $plainToken = bin2hex(random_bytes(32));
         $tokenHash  = hash("sha256", $plainToken);
 
@@ -71,16 +78,19 @@ class UserService extends BaseService implements IUserService
         );
 
         $this->emailVerificationRepository->create($emailToken);
+        error_log("insert token: " . round(microtime(true)-$start,2));
 
         $this->emailService->sendVerificationEmail(
             $dto->email,
             $dto->nome,
             $plainToken
         );
+        error_log("email send: " . round(microtime(true)-$start,2));
+
+        error_log("TOTAL: " . round(microtime(true)-$start,2));
 
         return $this->userRepository->findById($user->id);
     }
-
     // ============================================================
     // LOGIN
     // ============================================================

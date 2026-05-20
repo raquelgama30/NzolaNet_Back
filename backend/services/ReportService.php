@@ -55,6 +55,10 @@ public function __construct(
 
     return $created;
 }
+    public function getById(string $reportId): ?ReportDTO
+    {
+        return $this->reportRepository->findById($reportId);
+    }
 
     public function resolve(
         string $reportId,

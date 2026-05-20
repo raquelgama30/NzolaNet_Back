@@ -54,11 +54,6 @@ class PostService extends BaseService implements IPostService
         return $this->enriquecerComMedia($post);
     }
 
-    public function update(string $postId, PostDTO $dto): bool
-    {
-        return $this->postRepository->update($postId, $dto);
-    }
-
 
 
     public function getFeed(string $userId, int $page, int $limit): array
@@ -125,25 +120,6 @@ class PostService extends BaseService implements IPostService
     );
 }
 
-public function delete(string $postId): bool
-{
-    // ── 1. Apagar media (ficheiro físico + registo na BD) ──
-    $mediaArray = $this->mediaRepository->findByPost($postId);
-
-    if (!empty($mediaArray)) {
-        $this->apagarFicheiro($mediaArray[0]->url);
-        $this->mediaRepository->deleteByPost($postId);
-    }
-
-    // ── 2. Apagar bazes associadas ─────────────────────────
-    $this->bazeRepository->deleteByPost($postId);
-
-    // ── 3. Apagar comentários associados ───────────────────
-    $this->commentRepository->deleteByPost($postId);
-
-    // ── 4. Marcar post como eliminado ──────────────────────
-    return $this->postRepository->delete($postId);
-}
 
 private function apagarFicheiro(string $url): void
 {
@@ -164,6 +140,48 @@ private function apagarFicheiro(string $url): void
         unlink($ficheiro);
         error_log("Apagado com sucesso");
     }
+}
+
+public function update(string $postId, PostDTO $dto): bool
+{
+    $post = $this->postRepository->findById($postId);
+
+    if (!$post) {
+        throw new Exception("Publicação não encontrada");
+    }
+
+    // Verificar se é o dono
+    if ($post->user_id !== $dto->user_id) {
+        throw new Exception("Não tens permissão para editar esta publicação");
+    }
+
+    return $this->postRepository->update($postId, $dto);
+}
+
+public function delete(string $postId, string $authUserId): bool
+{
+    $post = $this->postRepository->findById($postId);
+
+    if (!$post) {
+        throw new Exception("Publicação não encontrada");
+    }
+
+    // Verificar se é o dono
+    if ($post->user_id !== $authUserId) {
+        throw new Exception("Não tens permissão para eliminar esta publicação");
+    }
+
+    // Apagar media, bazes e comentários associados
+    $mediaArray = $this->mediaRepository->findByPost($postId);
+    if (!empty($mediaArray)) {
+        $this->apagarFicheiro($mediaArray[0]->url);
+        $this->mediaRepository->deleteByPost($postId);
+    }
+
+    $this->bazeRepository->deleteByPost($postId);
+    $this->commentRepository->deleteByPost($postId);
+
+    return $this->postRepository->delete($postId);
 }
 
 }

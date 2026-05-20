@@ -18,25 +18,6 @@ class PostController extends BaseController
         ], $result ? 201 : 400);
     }
 
-
-    public function update(string $id, PostDTO $dto): void
-    {
-        $result = $this->service->update($id, $dto);
-        $this->json([
-            "success" => $result,
-            "message" => $result ? "Publicação atualizada" : "Erro ao atualizar"
-        ]);
-    }
-
-    public function delete(string $id): void
-    {
-        $result = $this->service->delete($id);
-        $this->json([
-            "success" => $result,
-            "message" => $result ? "Publicação eliminada" : "Erro ao eliminar"
-        ]);
-    }
-
     public function getMyPosts(string $userId, int $page, int $limit): void
     {
         $posts = $this->service->getUserPosts($userId, $page, $limit);
@@ -65,7 +46,7 @@ class PostController extends BaseController
         $posts = $this->service->getFeed($userId, $page, $limit);
         $this->json(["success" => true, "data" => $posts]);
     }
-       
+
     public function getById(string $id, string $authUserId): void
     {
         $post = $this->service->getById($id, $authUserId);
@@ -78,5 +59,37 @@ class PostController extends BaseController
         }
 
         $this->json(["success" => true, "data" => $post]);
+    }
+
+    public function update(string $id, PostDTO $dto): void
+    {
+        try {
+            $result = $this->service->update($id, $dto);
+            $this->json([
+                "success" => $result,
+                "message" => $result ? "Publicação atualizada" : "Erro ao atualizar"
+            ]);
+        } catch (Exception $e) {
+            $this->json([
+                "success" => false,
+                "message" => $e->getMessage()
+            ], 403);
+        }
+    }
+
+    public function delete(string $id, string $authUserId): void
+    {
+        try {
+            $result = $this->service->delete($id, $authUserId);
+            $this->json([
+                "success" => $result,
+                "message" => $result ? "Publicação eliminada" : "Erro ao eliminar"
+            ]);
+        } catch (Exception $e) {
+            $this->json([
+                "success" => false,
+                "message" => $e->getMessage()
+            ], 403);
+        }
     }
 }

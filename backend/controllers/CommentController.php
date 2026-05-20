@@ -12,14 +12,14 @@ class CommentController extends BaseController
     public function create(string $userId, string $postId, string $conteudo): void
     {
         $dto = new CommentDTO(
-            id:                "",
-            user_id:           $userId,
-            post_id:           $postId,
-            conteudo:          $conteudo,
-            eliminado:         false,
-            removido_por_admin:false,
-            criado_em:         "",
-            atualizado_em:     ""
+            id: "",
+            user_id: $userId,
+            post_id: $postId,
+            conteudo: $conteudo,
+            eliminado: false,
+            removido_por_admin: false,
+            criado_em: "",
+            atualizado_em: ""
         );
 
         $result = $this->service->create($userId, $dto);
@@ -29,23 +29,6 @@ class CommentController extends BaseController
         ], $result ? 201 : 400);
     }
 
-    public function update(string $commentId, CommentDTO $dto): void
-    {
-        $result = $this->service->update($commentId, $dto);
-        $this->json([
-            "success" => $result,
-            "message" => $result ? "Comentário atualizado" : "Erro ao atualizar"
-        ]);
-    }
-
-    public function delete(string $commentId): void
-    {
-        $result = $this->service->delete($commentId);
-        $this->json([
-            "success" => $result,
-            "message" => $result ? "Comentário eliminado" : "Erro ao eliminar"
-        ]);
-    }
 
     // Apenas admin — marca removido_por_admin = true
     public function deleteByAdmin(string $commentId): void
@@ -64,5 +47,37 @@ class CommentController extends BaseController
             "success" => true,
             "data"    => $comments
         ]);
+    }
+
+    public function update(string $commentId, CommentDTO $dto): void
+    {
+        try {
+            $result = $this->service->update($commentId, $dto);
+            $this->json([
+                "success" => $result,
+                "message" => $result ? "Comentário atualizado" : "Erro ao atualizar"
+            ]);
+        } catch (Exception $e) {
+            $this->json([
+                "success" => false,
+                "message" => $e->getMessage()
+            ], 403);
+        }
+    }
+
+    public function delete(string $commentId, string $authUserId): void
+    {
+        try {
+            $result = $this->service->delete($commentId, $authUserId);
+            $this->json([
+                "success" => $result,
+                "message" => $result ? "Comentário eliminado" : "Erro ao eliminar"
+            ]);
+        } catch (Exception $e) {
+            $this->json([
+                "success" => false,
+                "message" => $e->getMessage()
+            ], 403);
+        }
     }
 }

@@ -2,44 +2,46 @@
 
 class Database {
 
-    private $host     = "ep-patient-mud-aco73537.sa-east-1.aws.neon.tech";
+    private $host     = "ep-falling-sun-altskvc5-pooler.c-3.eu-central-1.aws.neon.tech";
     private $db_name  = "nzolanet";
     private $username = "neondb_owner";
-    private $password = "npg_wVjypcOeK94o";
+    private $password = "npg_MuN8ZUpH2ztW";
     private $port     = "5432";
 
-    public $conn;
+    public $conn = null;
 
     public function connect() {
 
-        $this->conn = null;
+        // evita reconectar
+        if ($this->conn instanceof PDO) {
+            return $this->conn;
+        }
 
         try {
 
             $dsn =
-                "pgsql:" .
-                "host={$this->host} " .
-                "port={$this->port} " .
-                "dbname={$this->db_name} " .
-                "sslmode=require " .
-                "options=endpoint=ep-patient-mud-aco73537";
+                "pgsql:host={$this->host};" .
+                "port={$this->port};" .
+                "dbname={$this->db_name};" .
+                "sslmode=require;" .
+                "options=endpoint=ep-falling-sun-altskvc5";
 
             $this->conn = new PDO(
                 $dsn,
                 $this->username,
-                $this->password
+                $this->password,
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_PERSISTENT => true
+                ]
             );
 
-            $this->conn->setAttribute(
-                PDO::ATTR_ERRMODE,
-                PDO::ERRMODE_EXCEPTION
-            );
-
+            return $this->conn;
 
         } catch (PDOException $e) {
-            echo "Erro: " . $e->getMessage();
-        }
 
-        return $this->conn;
+            die("Erro na conexão: " . $e->getMessage());
+        }
     }
 }
