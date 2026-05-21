@@ -6,6 +6,7 @@ class UserService extends BaseService implements IUserService
 {
 
     private IUserRepository              $userRepository;
+    private IPasswordResetRepository     $passwordResetRepository;  // ← novo
     private IEmailVerificationRepository $emailVerificationRepository;
     private EmailService                 $emailService;
     private IPostService                 $postService;        // NOVO
@@ -15,6 +16,7 @@ class UserService extends BaseService implements IUserService
     private IConversationRepository      $conversationRepository; // NOVO
     private IMessageRepository           $messageRepository;   // NOVO
     private ISessionRepository           $sessionRepository;    // NOVO
+
 
     public function __construct(
         IUserRepository              $userRepository,
@@ -26,7 +28,9 @@ class UserService extends BaseService implements IUserService
         IBlockRepository             $blockRepository,
         IConversationRepository      $conversationRepository,
         IMessageRepository           $messageRepository,
-        ISessionRepository           $sessionRepository
+        ISessionRepository           $sessionRepository,
+        IPasswordResetRepository $passwordResetRepository  // ← novo parâmetro
+
     ) {
         $this->userRepository              = $userRepository;
         $this->emailVerificationRepository = $emailVerificationRepository;
@@ -38,6 +42,8 @@ class UserService extends BaseService implements IUserService
         $this->conversationRepository      = $conversationRepository;
         $this->messageRepository           = $messageRepository;
         $this->sessionRepository           = $sessionRepository;
+        $this->passwordResetRepository = $passwordResetRepository;  // ← atribuir
+
     }
 
     // ============================================================
@@ -435,5 +441,53 @@ class UserService extends BaseService implements IUserService
                 $this->ultimoTokenEmail
             );
         }
+    }
+    // Propriedade temporária para o token de reset
+    public string $ultimoTokenReset = '';
+
+    // ============================================================
+    // GERAR TOKEN RESET PASSWORD (sem enviar email)
+    // ============================================================
+
+    public function gerarTokenResetPassword(string $email): ?string
+    {
+        $user = $this->userRepository->findByEmail($email);
+
+        // Não revelar se o email existe ou não (segurança)
+        if (!$user) {
+            return null;
+        }
+
+        $plainToken = bin2hex(random_bytes(32));
+        $tokenHash  = hash("sha256", $plainToken);
+
+        // Guardar token na BD (tabela password_resets ou similar)
+        $this->passwordResetRepository->create(new PasswordResetToken(
+            id: $this->generateUUID(),
+            user_id: $user->id,
+            token_hash: $tokenHash,
+            expira_em: date("Y-m-d H:i:s", strtotime("+1 hour")),  // ← ANTES
+            usado: false,                                       // ← DEPOIS
+            criado_em: date("Y-m-d H:i:s")
+        ));
+
+
+        // Guardar token plain temporariamente
+        $this->ultimoTokenReset = $plainToken;
+
+        return $plainToken;
+    }
+
+    // ============================================================
+    // ENVIAR EMAIL RESET PASSWORD (depois de responder)
+    // ============================================================
+
+    public function enviarEmailResetPassword(string $email, string $nome, string $token): void
+    {
+        $this->emailService->sendPasswordResetEmail(
+            $email,
+            $nome,    // ← ADICIONADO
+            $token
+        );
     }
 }

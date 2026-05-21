@@ -12,22 +12,22 @@ class PasswordResetRepository implements IPasswordResetRepository
     public function create(PasswordResetToken $token): bool
     {
         $sql = "
-            INSERT INTO password_reset_tokens (
-                id,
-                user_id,
-                token_hash,
-                expira_em,
-                usado,
-                criado_em
-            ) VALUES (
-                :id,
-                :user_id,
-                :token_hash,
-                :expira_em,
-                false,
-                :criado_em
-            )
-        ";
+        INSERT INTO password_reset_tokens (
+            id,
+            user_id,
+            token_hash,
+            expira_em,
+            usado,
+            criado_em
+        ) VALUES (
+            :id,
+            :user_id,
+            :token_hash,
+            :expira_em,
+            :usado,        // ← BIND PARAM
+            :criado_em
+        )
+    ";
 
         $stmt = $this->conn->prepare($sql);
 
@@ -36,6 +36,7 @@ class PasswordResetRepository implements IPasswordResetRepository
             ":user_id"    => $token->user_id,
             ":token_hash" => $token->token_hash,
             ":expira_em"  => $token->expira_em,
+            ":usado"      => $token->usado ? 'true' : 'false',  // ← ADICIONADO (PostgreSQL aceita string 'true'/'false' para boolean)
             ":criado_em"  => $token->criado_em
         ]);
     }
@@ -63,12 +64,12 @@ class PasswordResetRepository implements IPasswordResetRepository
         }
 
         return new PasswordResetTokenDTO(
-            id:         $data['id'],
-            user_id:    $data['user_id'],
+            id: $data['id'],
+            user_id: $data['user_id'],
             token_hash: $data['token_hash'],
-            expira_em:  $data['expira_em'],
-            usado:      (bool) $data['usado'],
-            criado_em:  $data['criado_em']
+            expira_em: $data['expira_em'],
+            usado: (bool) $data['usado'],
+            criado_em: $data['criado_em']
         );
     }
 

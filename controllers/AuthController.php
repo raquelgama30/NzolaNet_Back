@@ -146,12 +146,41 @@ class AuthController extends BaseController
 
     public function forgotPassword(ForgotPasswordDTO $dto): void
     {
-        $this->passwordResetService->requestReset($dto);
+        try {
+            // Gerar token SEM enviar email ainda
+            $token = $this->userService->gerarTokenResetPassword($dto->email);
 
-        $this->json([
-            "success" => true,
-            "message" => "Se o email existir, receberás um link para recuperar a password."
-        ]);
+            // Responder ao cliente IMEDIATAMENTE
+            $response = json_encode([
+                "success" => true,
+                "message" => "Se o email existir, receberás instruções para redefinir a password."
+            ]);
+
+            http_response_code(200);
+            header("Content-Type: application/json");
+            header("Content-Length: " . strlen($response));
+            echo $response;
+
+            // Fechar ligação com o cliente
+            if (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
+            } else {
+                if (ob_get_level() > 0) {
+                    ob_end_flush();
+                }
+                flush();
+            }
+
+            // Enviar email DEPOIS de responder
+            if ($token) {
+                $this->userService->enviarEmailResetPassword($dto->email, $token);
+            }
+        } catch (Exception $e) {
+            $this->json([
+                "success" => false,
+                "message" => $e->getMessage()
+            ], 400);
+        }
     }
 
     // ============================================================
