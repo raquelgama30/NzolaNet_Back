@@ -43,7 +43,7 @@ class EmailService
             $mail->Subject = "Verifica o teu email — Nzolanet";
 
             // Backend valida o token e redireciona para o Angular
-            $link = "http://localhost:8081/NzolaNet_Back/backend/index.php?route=auth&action=verificarEmail&token=" . $token;
+            $link = "https://nzolanet-back.onrender.com?route=auth&action=verificarEmail&token=" . $token;
 
             $mail->Body = "
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
