@@ -67,7 +67,7 @@ require_once __DIR__ . "/dto/PostComMediaDTO.php";
 // AUTOLOAD — Config
 // ============================================================
 
-require_once __DIR__ . "/config/Database.php";
+require_once __DIR__ . "/config/database.php";
 require_once __DIR__ . "/config/email.php";
 
 // ============================================================
