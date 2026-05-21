@@ -15,35 +15,32 @@ class EmailService
 
     public function sendVerificationEmail($email, $nome, $token)
     {
-
         $mail = new PHPMailer(true);
 
         try {
 
-            // ── Configuração SMTP ──────────────────
             $mail->isSMTP();
             $mail->Host       = EmailConfig::SMTP_HOST;
             $mail->SMTPAuth   = true;
-            $mail->Username   = EmailConfig::SMTP_USER;
-            $mail->Password   = EmailConfig::SMTP_PASS;
+            $mail->Username   = EmailConfig::getSmtpUser();
+            $mail->Password   = EmailConfig::getSmtpPass();
             $mail->SMTPSecure = "tls";
             $mail->Port       = EmailConfig::SMTP_PORT;
             $mail->CharSet    = "UTF-8";
+            $mail->Timeout    = 10;
 
-            // ── Remetente e destinatário ───────────
             $mail->setFrom(
-                EmailConfig::SMTP_USER,
+                EmailConfig::getSmtpUser(),
                 EmailConfig::FROM_NAME
             );
 
             $mail->addAddress($email, $nome);
 
-            // ── Conteúdo do email ──────────────────
             $mail->isHTML(true);
             $mail->Subject = "Verifica o teu email — Nzolanet";
 
-            // Backend valida o token e redireciona para o Angular
-            $link = "https://nzolanet-back.onrender.com?route=auth&action=verificarEmail&token=" . $token;
+            $appUrl = getenv('APP_URL') ?: "https://nzolanet-back.onrender.com";
+            $link   = $appUrl . "?route=auth&action=verificarEmail&token=" . $token;
 
             $mail->Body = "
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
@@ -71,6 +68,7 @@ class EmailService
 
             $mail->send();
             return true;
+
         } catch (Exception $e) {
             error_log("Erro ao enviar email de verificação: " . $e->getMessage());
             return false;
@@ -83,36 +81,33 @@ class EmailService
 
     public function sendPasswordResetEmail($email, $nome, $token)
     {
-
         $mail = new PHPMailer(true);
 
         try {
 
-            // ── Configuração SMTP ──────────────────
             $mail->isSMTP();
             $mail->Host       = EmailConfig::SMTP_HOST;
             $mail->SMTPAuth   = true;
-            $mail->Username   = EmailConfig::SMTP_USER;
-            $mail->Password   = EmailConfig::SMTP_PASS;
+            $mail->Username   = EmailConfig::getSmtpUser();
+            $mail->Password   = EmailConfig::getSmtpPass();
             $mail->SMTPSecure = "tls";
             $mail->Port       = EmailConfig::SMTP_PORT;
             $mail->CharSet    = "UTF-8";
+            $mail->Timeout    = 10;
 
-            // ── Remetente e destinatário ───────────
             $mail->setFrom(
-                EmailConfig::SMTP_USER,
+                EmailConfig::getSmtpUser(),
                 EmailConfig::FROM_NAME
             );
 
             $mail->addAddress($email, $nome);
 
-            // ── Conteúdo do email ──────────────────
             $mail->isHTML(true);
             $mail->Subject = "Recuperação de password — Nzolanet";
 
-            // Angular recebe o token na URL e mostra o formulário
-            // de nova password. Depois faz POST para o backend.
-            $link = "http://localhost:4200/recuperar-password/" . $token;
+            // URL do frontend — usa variável de ambiente em produção
+            $frontendUrl = getenv('FRONTEND_URL') ?: "http://localhost:4200";
+            $link        = $frontendUrl . "/recuperar-password/" . $token;
 
             $mail->Body = "
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
@@ -140,6 +135,7 @@ class EmailService
 
             $mail->send();
             return true;
+
         } catch (Exception $e) {
             error_log("Erro ao enviar email de reset: " . $e->getMessage());
             return false;

@@ -101,13 +101,25 @@ class UserService extends BaseService implements IUserService
         $this->emailVerificationRepository->create($emailToken);
         error_log("insert token: " . round(microtime(true) - $start, 2));
 
-        $this->emailService->sendVerificationEmail(
-            $dto->email,
-            $dto->nome,
-            $plainToken
-        );
-        error_log("email send: " . round(microtime(true) - $start, 2));
+        // Guardar variáveis para usar no shutdown
+        $emailService  = $this->emailService;
+        $emailAddr     = $dto->email;
+        $emailNome     = $dto->nome;
+        $emailPlain    = $plainToken;
 
+        // Enviar email DEPOIS de responder ao cliente
+        // O utilizador não espera pelo envio
+        register_shutdown_function(
+            function () use ($emailService, $emailAddr, $emailNome, $emailPlain) {
+                $emailService->sendVerificationEmail(
+                    $emailAddr,
+                    $emailNome,
+                    $emailPlain
+                );
+            }
+        );
+
+        error_log("email agendado: " . round(microtime(true) - $start, 2));
         error_log("TOTAL: " . round(microtime(true) - $start, 2));
 
         return $this->userRepository->findById($user->id);
