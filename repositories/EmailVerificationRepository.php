@@ -75,4 +75,31 @@ class EmailVerificationRepository implements IEmailVerificationRepository
         $stmt = $this->conn->prepare($sql);
         return $stmt->execute([":token_hash" => $tokenHash]);
     }
+        public function findByUserId(string $userId): ?EmailVerificationTokenDTO
+    {
+        $sql = "
+            SELECT *
+            FROM email_verification_tokens
+            WHERE user_id = :user_id
+            ORDER BY criado_em DESC
+            LIMIT 1
+        ";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([":user_id" => $userId]);
+
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$data) {
+            return null;
+        }
+
+        return new EmailVerificationTokenDTO(
+            $data['id'],
+            $data['user_id'],
+            $data['token_hash'],
+            $data['expira_em'],
+            $data['criado_em']
+        );
+    }
 }
