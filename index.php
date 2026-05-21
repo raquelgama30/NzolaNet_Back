@@ -249,7 +249,6 @@ $emailVerificationService = new EmailVerificationService(
 $passwordResetService = new PasswordResetService(
     $passwordResetRepository,
     $userRepository,
-    $sessionRepository,
     $emailService
 );
 
