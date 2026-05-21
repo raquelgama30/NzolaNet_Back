@@ -70,15 +70,24 @@ class AuthController extends BaseController
     // LOGIN
     // ============================================================
 
-    public function login(UserLoginDTO $dto): void
+      public function login(UserLoginDTO $dto): void
     {
         try {
             $result = $this->userService->login($dto);
 
-            $this->sessionService->create(
-                $result["user"]->id,
-                $result["hash"]
+            // ← AQUI: Criar o SessionDTO antes de passar
+            $sessionDTO = new SessionDTO(
+                id: '',                    // ou null se for auto-increment
+                user_id: $result["user"]->id,
+                token_hash: $result["hash"],
+                ip: $_SERVER['REMOTE_ADDR'] ?? null,
+                user_agent: $_SERVER['HTTP_USER_AGENT'] ?? null,
+                expira_em: date('Y-m-d H:i:s', strtotime('+24 hours')),
+                criado_em: date('Y-m-d H:i:s'),
+                logout_em: null
             );
+
+            $this->sessionService->create($sessionDTO);
 
             $this->json([
                 "success" => true,
@@ -86,13 +95,14 @@ class AuthController extends BaseController
                 "token"   => $result["token"],
                 "user"    => $result["user"]
             ]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->json([
                 "success" => false,
                 "message" => $e->getMessage()
             ], 401);
         }
     }
+
 
     // ============================================================
     // LOGOUT
