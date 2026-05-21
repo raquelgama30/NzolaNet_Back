@@ -338,7 +338,7 @@ class UserService extends BaseService implements IUserService
         }
     }
 
-    
+
 
     // ============================================================
     // ADMIN
@@ -352,5 +352,88 @@ class UserService extends BaseService implements IUserService
     public function ativar(string $id): bool
     {
         return $this->userRepository->activateUser($id);
+    }
+    // Propriedade temporária para passar o token ao controller
+    public string $ultimoTokenEmail = '';
+
+    // ============================================================
+    // REGISTO SEM EMAIL (responde rápido)
+    // ============================================================
+
+    public function registerSemEmail(UserRegisterDTO $dto): UserDTO
+    {
+        if ($this->userRepository->findByEmail($dto->email)) {
+            throw new Exception("Este email já está registado");
+        }
+
+        if ($this->userRepository->findByUsername($dto->username)) {
+            throw new Exception("Este username já está em uso");
+        }
+
+        $user = new User(
+            id: $this->generateUUID(),
+            nome: $dto->nome,
+            username: $dto->username,
+            email: $dto->email,
+            password_hash: password_hash($dto->password, PASSWORD_DEFAULT),
+            foto_perfil: null,
+            foto_capa: null,
+            bio: null,
+            data_nascimento: $dto->data_nascimento,
+            genero: $dto->genero,
+            privacidade: "publico",
+            is_admin: false,
+            is_active: true,
+            email_verificado_em: null,
+            ultimo_acesso_em: null,
+            criado_em: date("Y-m-d H:i:s"),
+            atualizado_em: date("Y-m-d H:i:s")
+        );
+
+        $created = $this->userRepository->create($user);
+
+        if (!$created) {
+            throw new Exception("Erro ao criar utilizador");
+        }
+
+        // Gerar e guardar token — mas NÃO enviar email ainda
+        $plainToken = bin2hex(random_bytes(32));
+        $tokenHash  = hash("sha256", $plainToken);
+
+        $emailToken = new EmailVerificationToken(
+            id: $this->generateUUID(),
+            user_id: $user->id,
+            token_hash: $tokenHash,
+            expira_em: date("Y-m-d H:i:s", strtotime("+24 hours")),
+            criado_em: date("Y-m-d H:i:s")
+        );
+
+        $this->emailVerificationRepository->create($emailToken);
+
+        // Guardar o token plain em propriedade temporária
+        $this->ultimoTokenEmail = $plainToken;
+
+        return $this->userRepository->findById($user->id);
+    }
+
+    // ============================================================
+    // ENVIAR EMAIL DE VERIFICAÇÃO (chamado depois de responder)
+    // ============================================================
+
+    public function enviarEmailVerificacao(
+        string $email,
+        string $nome,
+        string $userId
+    ): void {
+        // Buscar o token da BD
+        $tokens = $this->emailVerificationRepository->findByUserId($userId);
+
+        if ($tokens && $this->ultimoTokenEmail) {
+            $this->emailService->sendVerificationEmail(
+                $email,
+                $nome,
+                $this->ultimoTokenEmail
+            );
+        }
     }
 }

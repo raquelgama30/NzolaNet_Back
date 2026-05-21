@@ -26,14 +26,33 @@ class AuthController extends BaseController
     public function register(UserRegisterDTO $dto): void
     {
         try {
-            $user = $this->userService->register($dto);
+            // Registar o utilizador SEM enviar email ainda
+            $user = $this->userService->registerSemEmail($dto);
 
-            $this->json([
+            // Enviar resposta ao cliente IMEDIATAMENTE
+            $response = json_encode([
                 "success" => true,
-                "message" => "Conta criada com sucesso. Verifica o teu email para ativar a conta.",
+                "message" => "Conta criada com sucesso. Verifica o teu email.",
                 "data"    => $user
-            ], 201);
+            ]);
 
+            http_response_code(201);
+            header("Content-Type: application/json");
+            header("Content-Length: " . strlen($response));
+            echo $response;
+
+            // Fechar a ligação com o cliente
+            if (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
+            } else {
+                if (ob_get_level() > 0) {
+                    ob_end_flush();
+                }
+                flush();
+            }
+
+            // Enviar email DEPOIS de responder — cliente já recebeu a resposta
+            $this->userService->enviarEmailVerificacao($dto->email, $dto->nome, $user->id);
         } catch (Exception $e) {
             $this->json([
                 "success" => false,
@@ -41,7 +60,6 @@ class AuthController extends BaseController
             ], 400);
         }
     }
-
     // ============================================================
     // LOGIN
     // ============================================================
@@ -55,14 +73,14 @@ class AuthController extends BaseController
             $tokenHash  = $result['hash'];
 
             $sessionDTO = new SessionDTO(
-                id:         "",
-                user_id:    $user->id,
+                id: "",
+                user_id: $user->id,
                 token_hash: $tokenHash,
-                ip:         $_SERVER['REMOTE_ADDR']     ?? null,
+                ip: $_SERVER['REMOTE_ADDR']     ?? null,
                 user_agent: $_SERVER['HTTP_USER_AGENT'] ?? null,
-                expira_em:  date("Y-m-d H:i:s", strtotime("+7 days")),
-                criado_em:  date("Y-m-d H:i:s"),
-                logout_em:  null
+                expira_em: date("Y-m-d H:i:s", strtotime("+7 days")),
+                criado_em: date("Y-m-d H:i:s"),
+                logout_em: null
             );
 
             $this->sessionService->create($sessionDTO);
@@ -75,7 +93,6 @@ class AuthController extends BaseController
                     "user"  => $user
                 ]
             ]);
-
         } catch (Exception $e) {
             $this->json([
                 "success" => false,
@@ -102,7 +119,7 @@ class AuthController extends BaseController
     // VERIFICAR EMAIL
     // ============================================================
 
-       // ============================================================
+    // ============================================================
     // VERIFICAR EMAIL
     // ============================================================
 

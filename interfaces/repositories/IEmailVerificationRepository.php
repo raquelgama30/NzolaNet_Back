@@ -13,5 +13,6 @@ interface IEmailVerificationRepository {
     public function delete(
         string $tokenHash
     ): bool;
+    public function findByUserId(string $userId): ?EmailVerificationTokenDTO;
     
 }
