@@ -2,17 +2,29 @@
 
 class Database {
 
-    private $host     = "ep-falling-sun-altskvc5-pooler.c-3.eu-central-1.aws.neon.tech";
-    private $db_name  = "nzolanet";
-    private $username = "neondb_owner";
-    private $password = "npg_MuN8ZUpH2ztW";
-    private $port     = "5432";
+    private $host;
+    private $db_name;
+    private $username;
+    private $password;
+    private $port;
+    private $sslmode;
+    private $options;
 
     public $conn = null;
 
+    public function __construct() {
+        // Usar variáveis de ambiente do Render (ou fallback para local)
+        $this->host     = getenv('DB_HOST')     ?: "ep-falling-sun-altskvc5-pooler.c-3.eu-central-1.aws.neon.tech";
+        $this->db_name  = getenv('DB_NAME')    ?: "nzolanet";
+        $this->username = getenv('DB_USER')    ?: "neondb_owner";
+        $this->password = getenv('DB_PASS')    ?: "npg_MuN8ZUpH2ztW";
+        $this->port     = getenv('DB_PORT')    ?: "5432";
+        $this->sslmode  = getenv('DB_SSLMODE')  ?: "require";
+        $this->options  = getenv('DB_OPTIONS') ?: "endpoint=ep-falling-sun-altskvc5";
+    }
+
     public function connect() {
 
-        // evita reconectar
         if ($this->conn instanceof PDO) {
             return $this->conn;
         }
@@ -23,8 +35,8 @@ class Database {
                 "pgsql:host={$this->host};" .
                 "port={$this->port};" .
                 "dbname={$this->db_name};" .
-                "sslmode=require;" .
-                "options=endpoint=ep-falling-sun-altskvc5";
+                "sslmode={$this->sslmode};" .
+                "options={$this->options}";
 
             $this->conn = new PDO(
                 $dsn,
@@ -39,7 +51,6 @@ class Database {
             return $this->conn;
 
         } catch (PDOException $e) {
-
             die("Erro na conexão: " . $e->getMessage());
         }
     }

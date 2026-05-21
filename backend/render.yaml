@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: backend
+    runtime: docker
+    region: frankfurt
+    plan: free
+    branch: main
+    envVars:
+      - key: DB_HOST
+        value: ep-falling-sun-altskvc5-pooler.c-3.eu-central-1.aws.neon.tech
+      - key: DB_NAME
+        value: nzolanet
+      - key: DB_USER
+        value: neondb_owner
+      - key: DB_PASS
+        value: npg_MuN8ZUpH2ztW
+      - key: DB_PORT
+        value: 5432
+      - key: DB_SSLMODE
+        value: require
+      - key: DB_OPTIONS
+        value: endpoint=ep-falling-sun-altskvc5
+      - key: JWT_SECRET
+        generateValue: true
+    healthCheckPath: /?route=auth&action=login
