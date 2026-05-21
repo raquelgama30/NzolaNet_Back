@@ -1,160 +1,98 @@
 <?php
 
-class AuthController extends BaseController
+class PasswordResetRepository implements IPasswordResetRepository
 {
-    private UserService              $userService;
-    private SessionService           $sessionService;
-    private EmailVerificationService $emailVerificationService;
-    private PasswordResetService     $passwordResetService;
+    private $conn;
 
-    public function __construct(
-        UserService              $userService,
-        SessionService           $sessionService,
-        EmailVerificationService $emailVerificationService,
-        PasswordResetService     $passwordResetService
-    ) {
-        $this->userService              = $userService;
-        $this->sessionService           = $sessionService;
-        $this->emailVerificationService = $emailVerificationService;
-        $this->passwordResetService     = $passwordResetService;
+    public function __construct($database)
+    {
+        $this->conn = $database;
     }
 
-    // ============================================================
-    // REGISTO
-    // ============================================================
-
-    public function register(UserRegisterDTO $dto): void
+    public function create(PasswordResetToken $token): bool
     {
-        try {
-            $user = $this->userService->register($dto);
+        $sql = "
+        INSERT INTO password_reset_tokens (
+            id,
+            user_id,
+            token_hash,
+            expira_em,
+            usado,
+            criado_em
+        ) VALUES (
+            :id,
+            :user_id,
+            :token_hash,
+            :expira_em,
+            :usado,        
+            :criado_em
+        )
+    ";
 
-            $this->json([
-                "success" => true,
-                "message" => "Conta criada com sucesso. Verifica o teu email para ativar a conta.",
-                "data"    => $user
-            ], 201);
+        $stmt = $this->conn->prepare($sql);
 
-        } catch (Exception $e) {
-            $this->json([
-                "success" => false,
-                "message" => $e->getMessage()
-            ], 400);
-        }
-    }
-
-    // ============================================================
-    // LOGIN
-    // ============================================================
-
-    public function login(UserLoginDTO $dto): void
-    {
-        try {
-            $result     = $this->userService->login($dto);
-            $user       = $result['user'];
-            $plainToken = $result['token'];
-            $tokenHash  = $result['hash'];
-
-            $sessionDTO = new SessionDTO(
-                id:         "",
-                user_id:    $user->id,
-                token_hash: $tokenHash,
-                ip:         $_SERVER['REMOTE_ADDR']     ?? null,
-                user_agent: $_SERVER['HTTP_USER_AGENT'] ?? null,
-                expira_em:  date("Y-m-d H:i:s", strtotime("+7 days")),
-                criado_em:  date("Y-m-d H:i:s"),
-                logout_em:  null
-            );
-
-            $this->sessionService->create($sessionDTO);
-
-            $this->json([
-                "success" => true,
-                "message" => "Login efetuado com sucesso",
-                "data"    => [
-                    "token" => $plainToken,
-                    "user"  => $user
-                ]
-            ]);
-
-        } catch (Exception $e) {
-            $this->json([
-                "success" => false,
-                "message" => $e->getMessage()
-            ], 401);
-        }
-    }
-
-    // ============================================================
-    // LOGOUT
-    // ============================================================
-
-    public function logout(string $token): void
-    {
-        $deleted = $this->sessionService->delete($token);
-
-        $this->json([
-            "success" => $deleted,
-            "message" => $deleted ? "Sessão terminada" : "Erro ao terminar sessão"
+        return $stmt->execute([
+            ":id"         => $token->id,
+            ":user_id"    => $token->user_id,
+            ":token_hash" => $token->token_hash,
+            ":expira_em"  => $token->expira_em,
+            ":usado"      => $token->usado ? 'true' : 'false',  // ← ADICIONADO (PostgreSQL aceita string 'true'/'false' para boolean)
+            ":criado_em"  => $token->criado_em
         ]);
     }
 
-    // ============================================================
-    // VERIFICAR EMAIL
-    // ============================================================
-
-       // ============================================================
-    // VERIFICAR EMAIL
-    // ============================================================
-
-    public function verifyEmail(string $token): void
+    /**
+     * Devolve PasswordResetTokenDTO (com user_id, expira_em, usado)
+     * para que o service consiga validar e fazer o reset.
+     */
+    public function findByToken(string $tokenHash): ?PasswordResetTokenDTO
     {
-        $dto    = new VerifyEmailDTO(token: $token);
-        $result = $this->emailVerificationService->verify($dto);
+        $sql = "
+            SELECT *
+            FROM password_reset_tokens
+            WHERE token_hash = :token_hash
+            LIMIT 1
+        ";
 
-        if ($result) {
-            // Redirecionar para o frontend após verificação com sucesso
-            header("Location: http://localhost:4200/confirmar-registo");
-            exit();
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([":token_hash" => $tokenHash]);
+
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$data) {
+            return null;
         }
 
-        $this->json([
-            "success" => false,
-            "message" => "Token inválido ou expirado"
-        ], 400);
+        return new PasswordResetTokenDTO(
+            id: $data['id'],
+            user_id: $data['user_id'],
+            token_hash: $data['token_hash'],
+            expira_em: $data['expira_em'],
+            usado: (bool) $data['usado'],
+            criado_em: $data['criado_em']
+        );
     }
 
-    // ============================================================
-    // ESQUECI A PASSWORD
-    // ============================================================
-
-    public function forgotPassword(ForgotPasswordDTO $dto): void
+    public function markAsUsed(string $tokenHash): bool
     {
-        $this->passwordResetService->requestReset($dto);
+        $sql = "
+            UPDATE password_reset_tokens
+            SET usado = true
+            WHERE token_hash = :token_hash
+        ";
 
-        $this->json([
-            "success" => true,
-            "message" => "Se o email existir, receberás um link para recuperar a password."
-        ]);
+        $stmt = $this->conn->prepare($sql);
+        return $stmt->execute([":token_hash" => $tokenHash]);
     }
 
-    // ============================================================
-    // RESET DE PASSWORD
-    // ============================================================
-
-    public function resetPassword(PasswordResetDTO $dto): void
+    public function deleteByUserId(string $userId): bool
     {
-        $result = $this->passwordResetService->resetPassword($dto);
+        $sql = "
+            DELETE FROM password_reset_tokens
+            WHERE user_id = :user_id
+        ";
 
-        if ($result) {
-            $this->json([
-                "success" => true,
-                "message" => "Password alterada com sucesso. Podes fazer login."
-            ]);
-        } else {
-            $this->json([
-                "success" => false,
-                "message" => "Token inválido, expirado ou já utilizado."
-            ], 400);
-        }
+        $stmt = $this->conn->prepare($sql);
+        return $stmt->execute([":user_id" => $userId]);
     }
 }
