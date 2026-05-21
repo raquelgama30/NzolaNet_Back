@@ -1,7 +1,6 @@
 <?php
 
-interface IEmailVerificationRepository
-{
+interface IEmailVerificationRepository {
 
     public function create(
         EmailVerificationToken $token
@@ -15,5 +14,4 @@ interface IEmailVerificationRepository
         string $tokenHash
     ): bool;
     
-    public function findByUserId(string $userId): ?EmailVerificationTokenDTO;
 }
