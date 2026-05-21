@@ -8,6 +8,15 @@ require_once __DIR__ . "/../config/email.php";
 
 class EmailService
 {
+    private string $resendApiKey;
+    private bool $useResend;
+
+    public function __construct()
+    {
+        $this->resendApiKey = getenv('RESEND_API_KEY') ?: '';
+        // Se tiver RESEND_API_KEY no Render, usa Resend. Se não, usa SMTP local.
+        $this->useResend = !empty($this->resendApiKey);
+    }
 
     // ============================================
     // ENVIAR EMAIL DE VERIFICAÇÃO
@@ -15,64 +24,13 @@ class EmailService
 
     public function sendVerificationEmail($email, $nome, $token)
     {
-        $mail = new PHPMailer(true);
-
-        try {
-
-            $mail->isSMTP();
-            $mail->Host       = EmailConfig::SMTP_HOST;
-            $mail->SMTPAuth   = true;
-            $mail->Username   = EmailConfig::getSmtpUser();
-            $mail->Password   = EmailConfig::getSmtpPass();
-            $mail->SMTPSecure = "tls";
-            $mail->Port       = EmailConfig::SMTP_PORT;
-            $mail->CharSet    = "UTF-8";
-            $mail->Timeout    = 10;
-
-            $mail->setFrom(
-                EmailConfig::getSmtpUser(),
-                EmailConfig::FROM_NAME
-            );
-
-            $mail->addAddress($email, $nome);
-
-            $mail->isHTML(true);
-            $mail->Subject = "Verifica o teu email — Nzolanet";
-
-            $appUrl = getenv('APP_URL') ?: "https://nzolanet-back.onrender.com";
-            $link   = $appUrl . "?route=auth&action=verificarEmail&token=" . $token;
-
-            $mail->Body = "
-                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-                    <h2 style='color: #4F46E5;'>Olá, $nome!</h2>
-                    <p>Obrigado por te registares no <strong>Nzolanet</strong>.</p>
-                    <p>Clica no botão abaixo para verificar o teu email:</p>
-                    <a href='$link' style='
-                        background-color: #4F46E5;
-                        color: white;
-                        padding: 12px 24px;
-                        text-decoration: none;
-                        border-radius: 6px;
-                        display: inline-block;
-                        margin: 16px 0;
-                        font-size: 16px;
-                    '>
-                        Verificar Email
-                    </a>
-                    <p style='color: #666;'>O link expira em <strong>24 horas</strong>.</p>
-                    <p style='color: #666;'>Se não foste tu, ignora este email.</p>
-                    <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
-                    <p style='color: #999; font-size: 12px;'>Nzolanet — A tua rede social</p>
-                </div>
-            ";
-
-            $mail->send();
-            return true;
-
-        } catch (Exception $e) {
-            error_log("Erro ao enviar email de verificação: " . $e->getMessage());
-            return false;
+        // Se estiver no Render (tem RESEND_API_KEY), usa API HTTP
+        if ($this->useResend) {
+            return $this->sendViaResend($email, $nome, $token, 'verification');
         }
+
+        // Se não, usa PHPMailer SMTP local
+        return $this->sendViaSMTP($email, $nome, $token, 'verification');
     }
 
     // ============================================
@@ -81,10 +39,70 @@ class EmailService
 
     public function sendPasswordResetEmail($email, $nome, $token)
     {
+        if ($this->useResend) {
+            return $this->sendViaResend($email, $nome, $token, 'reset');
+        }
+
+        return $this->sendViaSMTP($email, $nome, $token, 'reset');
+    }
+
+    // ============================================
+    // RESEND API (HTTP - funciona no Render)
+    // ============================================
+
+    private function sendViaResend($email, $nome, $token, $type): bool
+    {
+        $appUrl = getenv('APP_URL') ?: "https://nzolanet-back.onrender.com";
+
+        if ($type === 'verification') {
+            $subject = "Verifica o teu email — Nzolanet";
+            $link = $appUrl . "?route=auth&action=verificarEmail&token=" . $token;
+            $html = "<h2>Olá, {$nome}!</h2><p>Clica para verificar: <a href='{$link}'>Verificar Email</a></p><p>O link expira em 24 horas.</p>";
+        } else {
+            $frontendUrl = getenv('FRONTEND_URL') ?: "http://localhost:4200";
+            $link = $frontendUrl . "/recuperar-password/" . $token;
+            $subject = "Recuperação de password — Nzolanet";
+            $html = "<h2>Olá, {$nome}!</h2><p>Clica para recuperar: <a href='{$link}'>Recuperar Password</a></p><p>O link expira em 1 hora.</p>";
+        }
+
+        $data = [
+            'from' => 'onboarding@resend.dev',
+            'to' => [$email],
+            'subject' => $subject,
+            'html' => $html
+        ];
+
+        $ch = curl_init('https://api.resend.com/emails');
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $this->resendApiKey,
+            'Content-Type: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode === 200) {
+            error_log("Email enviado via Resend para: " . $email);
+            return true;
+        } else {
+            error_log("Erro Resend HTTP " . $httpCode . ": " . $response);
+            return false;
+        }
+    }
+
+    // ============================================
+    // SMTP LOCAL (PHPMailer - funciona no XAMPP)
+    // ============================================
+
+    private function sendViaSMTP($email, $nome, $token, $type): bool
+    {
         $mail = new PHPMailer(true);
 
         try {
-
             $mail->isSMTP();
             $mail->Host       = EmailConfig::SMTP_HOST;
             $mail->SMTPAuth   = true;
@@ -95,49 +113,28 @@ class EmailService
             $mail->CharSet    = "UTF-8";
             $mail->Timeout    = 10;
 
-            $mail->setFrom(
-                EmailConfig::getSmtpUser(),
-                EmailConfig::FROM_NAME
-            );
-
+            $mail->setFrom(EmailConfig::getSmtpUser(), EmailConfig::FROM_NAME);
             $mail->addAddress($email, $nome);
-
             $mail->isHTML(true);
-            $mail->Subject = "Recuperação de password — Nzolanet";
 
-            // URL do frontend — usa variável de ambiente em produção
-            $frontendUrl = getenv('FRONTEND_URL') ?: "http://localhost:4200";
-            $link        = $frontendUrl . "/recuperar-password/" . $token;
+            $appUrl = getenv('APP_URL') ?: "https://nzolanet-back.onrender.com";
 
-            $mail->Body = "
-                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-                    <h2 style='color: #4F46E5;'>Olá, $nome!</h2>
-                    <p>Recebemos um pedido para recuperar a tua password no <strong>Nzolanet</strong>.</p>
-                    <p>Clica no botão abaixo para definir uma nova password:</p>
-                    <a href='$link' style='
-                        background-color: #4F46E5;
-                        color: white;
-                        padding: 12px 24px;
-                        text-decoration: none;
-                        border-radius: 6px;
-                        display: inline-block;
-                        margin: 16px 0;
-                        font-size: 16px;
-                    '>
-                        Recuperar Password
-                    </a>
-                    <p style='color: #666;'>O link expira em <strong>1 hora</strong>.</p>
-                    <p style='color: #666;'>Se não foste tu, ignora este email. A tua password não será alterada.</p>
-                    <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
-                    <p style='color: #999; font-size: 12px;'>Nzolanet — A tua rede social</p>
-                </div>
-            ";
+            if ($type === 'verification') {
+                $mail->Subject = "Verifica o teu email — Nzolanet";
+                $link = $appUrl . "?route=auth&action=verificarEmail&token=" . $token;
+                $mail->Body = "<h2>Olá, {$nome}!</h2><p>Clica para verificar: <a href='{$link}'>Verificar Email</a></p>";
+            } else {
+                $frontendUrl = getenv('FRONTEND_URL') ?: "http://localhost:4200";
+                $link = $frontendUrl . "/recuperar-password/" . $token;
+                $mail->Subject = "Recuperação de password — Nzolanet";
+                $mail->Body = "<h2>Olá, {$nome}!</h2><p>Clica para recuperar: <a href='{$link}'>Recuperar Password</a></p>";
+            }
 
             $mail->send();
             return true;
 
         } catch (Exception $e) {
-            error_log("Erro ao enviar email de reset: " . $e->getMessage());
+            error_log("Erro SMTP: " . $e->getMessage());
             return false;
         }
     }
