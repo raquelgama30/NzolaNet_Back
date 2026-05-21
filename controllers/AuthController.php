@@ -58,7 +58,6 @@ class AuthController extends BaseController
                 $dto->nome,
                 $user->id
             );
-
         } catch (Exception $e) {
             $this->json([
                 "success" => false,
@@ -87,7 +86,6 @@ class AuthController extends BaseController
                 "token"   => $result["token"],
                 "user"    => $result["user"]
             ]);
-
         } catch (Exception $e) {
             $this->json([
                 "success" => false,
@@ -102,8 +100,7 @@ class AuthController extends BaseController
 
     public function logout(string $token): void
     {
-        $hash = hash("sha256", $token);
-        $this->sessionService->deleteByHash($hash);
+        $this->sessionService->delete($token);  // ← Usar delete(), não deleteByHash()
 
         $this->json([
             "success" => true,
@@ -118,13 +115,15 @@ class AuthController extends BaseController
     public function verifyEmail(string $token): void
     {
         try {
-            $this->emailVerificationService->verify($token);
+            // Criar DTO antes de passar
+            $dto = new VerifyEmailDTO(token: $token);
+
+            $this->emailVerificationService->verify($dto);
 
             $this->json([
                 "success" => true,
                 "message" => "Email verificado com sucesso"
             ]);
-
         } catch (Exception $e) {
             $this->json([
                 "success" => false,
@@ -132,7 +131,6 @@ class AuthController extends BaseController
             ], 400);
         }
     }
-
     // ============================================================
     // ESQUECEU PASSWORD - ASSÍNCRONO
     // ============================================================
@@ -173,7 +171,6 @@ class AuthController extends BaseController
                     $result['token']
                 );
             }
-
         } catch (Exception $e) {
             $this->json([
                 "success" => false,
@@ -195,7 +192,6 @@ class AuthController extends BaseController
                 "success" => true,
                 "message" => "Password redefinida com sucesso"
             ]);
-
         } catch (Exception $e) {
             $this->json([
                 "success" => false,
