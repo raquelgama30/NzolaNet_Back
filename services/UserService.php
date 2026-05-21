@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 class UserService extends BaseService implements IUserService
 {
-
+    
     private IUserRepository              $userRepository;
-    private IPasswordResetRepository     $passwordResetRepository;  // ← novo
     private IEmailVerificationRepository $emailVerificationRepository;
     private EmailService                 $emailService;
     private IPostService                 $postService;        // NOVO
@@ -16,7 +15,6 @@ class UserService extends BaseService implements IUserService
     private IConversationRepository      $conversationRepository; // NOVO
     private IMessageRepository           $messageRepository;   // NOVO
     private ISessionRepository           $sessionRepository;    // NOVO
-
 
     public function __construct(
         IUserRepository              $userRepository,
@@ -28,9 +26,7 @@ class UserService extends BaseService implements IUserService
         IBlockRepository             $blockRepository,
         IConversationRepository      $conversationRepository,
         IMessageRepository           $messageRepository,
-        ISessionRepository           $sessionRepository,
-        IPasswordResetRepository $passwordResetRepository  // ← novo parâmetro
-
+        ISessionRepository           $sessionRepository
     ) {
         $this->userRepository              = $userRepository;
         $this->emailVerificationRepository = $emailVerificationRepository;
@@ -42,8 +38,6 @@ class UserService extends BaseService implements IUserService
         $this->conversationRepository      = $conversationRepository;
         $this->messageRepository           = $messageRepository;
         $this->sessionRepository           = $sessionRepository;
-        $this->passwordResetRepository = $passwordResetRepository;  // ← atribuir
-
     }
 
     // ============================================================
@@ -344,8 +338,6 @@ class UserService extends BaseService implements IUserService
         }
     }
 
-
-
     // ============================================================
     // ADMIN
     // ============================================================
@@ -359,135 +351,5 @@ class UserService extends BaseService implements IUserService
     {
         return $this->userRepository->activateUser($id);
     }
-    // Propriedade temporária para passar o token ao controller
-    public string $ultimoTokenEmail = '';
-
-    // ============================================================
-    // REGISTO SEM EMAIL (responde rápido)
-    // ============================================================
-
-    public function registerSemEmail(UserRegisterDTO $dto): UserDTO
-    {
-        if ($this->userRepository->findByEmail($dto->email)) {
-            throw new Exception("Este email já está registado");
-        }
-
-        if ($this->userRepository->findByUsername($dto->username)) {
-            throw new Exception("Este username já está em uso");
-        }
-
-        $user = new User(
-            id: $this->generateUUID(),
-            nome: $dto->nome,
-            username: $dto->username,
-            email: $dto->email,
-            password_hash: password_hash($dto->password, PASSWORD_DEFAULT),
-            foto_perfil: null,
-            foto_capa: null,
-            bio: null,
-            data_nascimento: $dto->data_nascimento,
-            genero: $dto->genero,
-            privacidade: "publico",
-            is_admin: false,
-            is_active: true,
-            email_verificado_em: null,
-            ultimo_acesso_em: null,
-            criado_em: date("Y-m-d H:i:s"),
-            atualizado_em: date("Y-m-d H:i:s")
-        );
-
-        $created = $this->userRepository->create($user);
-
-        if (!$created) {
-            throw new Exception("Erro ao criar utilizador");
-        }
-
-        // Gerar e guardar token — mas NÃO enviar email ainda
-        $plainToken = bin2hex(random_bytes(32));
-        $tokenHash  = hash("sha256", $plainToken);
-
-        $emailToken = new EmailVerificationToken(
-            id: $this->generateUUID(),
-            user_id: $user->id,
-            token_hash: $tokenHash,
-            expira_em: date("Y-m-d H:i:s", strtotime("+24 hours")),
-            criado_em: date("Y-m-d H:i:s")
-        );
-
-        $this->emailVerificationRepository->create($emailToken);
-
-        // Guardar o token plain em propriedade temporária
-        $this->ultimoTokenEmail = $plainToken;
-
-        return $this->userRepository->findById($user->id);
-    }
-
-    // ============================================================
-    // ENVIAR EMAIL DE VERIFICAÇÃO (chamado depois de responder)
-    // ============================================================
-
-    public function enviarEmailVerificacao(
-        string $email,
-        string $nome,
-        string $userId
-    ): void {
-        // Buscar o token da BD
-        $tokens = $this->emailVerificationRepository->findByUserId($userId);
-
-        if ($tokens && $this->ultimoTokenEmail) {
-            $this->emailService->sendVerificationEmail(
-                $email,
-                $nome,
-                $this->ultimoTokenEmail
-            );
-        }
-    }
-    // Propriedade temporária para o token de reset
-    public string $ultimoTokenReset = '';
-
-    // ============================================================
-    // GERAR TOKEN RESET PASSWORD (sem enviar email)
-    // ============================================================
-
-    public function gerarTokenResetPassword(string $email): ?string
-    {
-        $user = $this->userRepository->findByEmail($email);
-
-        // Não revelar se o email existe ou não (segurança)
-        if (!$user) {
-            return null;
-        }
-
-        $plainToken = bin2hex(random_bytes(32));
-        $tokenHash  = hash("sha256", $plainToken);
-
-        // Guardar token na BD (tabela password_resets ou similar)
-        $this->passwordResetRepository->create(new PasswordResetToken(
-            id: $this->generateUUID(),
-            user_id: $user->id,
-            token_hash: $tokenHash,
-            expira_em: date("Y-m-d H:i:s", strtotime("+1 hour")),  // ← ANTES
-            usado: false,                                       // ← DEPOIS
-            criado_em: date("Y-m-d H:i:s")
-        ));
-
-
-        // Guardar token plain temporariamente
-        $this->ultimoTokenReset = $plainToken;
-
-        return $plainToken;
-    }
-
-    // ============================================================
-    // ENVIAR EMAIL RESET PASSWORD (depois de responder)
-    // ============================================================
-
-    public function enviarEmailResetPassword(string $email, string $nome, string $token): void
-    {
-        $this->emailService->sendPasswordResetEmail(
-            $email,
-            $nome,    // ← ADICIONADO
-            $token
-        );
-    }
+    
 }
