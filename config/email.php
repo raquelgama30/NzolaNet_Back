@@ -1,16 +1,12 @@
 <?php
 
-class EmailConfig {
-
-    public static function getSmtpUser(): string {
-        return getenv('SMTP_USER') ?: "nzolanet@gmail.com";
+class EmailConfig
+{
+    public static function getBrevoApiKey(): string
+    {
+        return getenv('BREVO_API_KEY') ?: '';
     }
 
-    public static function getSmtpPass(): string {
-        return getenv('SMTP_PASS') ?: "pnnc pkdl pazb fgai";
-    }
-
-    const SMTP_HOST = "smtp.gmail.com";
-    const SMTP_PORT = 587;
-    const FROM_NAME = "Nzolanet";
+    const FROM_EMAIL = "nzolanet@gmail.com";
+    const FROM_NAME  = "Nzolanet";
 }
