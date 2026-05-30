@@ -50,18 +50,19 @@ class EmailService
         $type
     ): bool {
 
-        $appUrl =
-            getenv('APP_URL')
-            ?: "https://nzolanet-back.onrender.com";
+        $frontendUrl =
+            getenv('FRONTEND_URL')
+            ?: "http://localhost:4200";
 
         if ($type === 'verification') {
 
             $subject =
                 "Verifica o teu email — Nzolanet";
 
+            // AGORA VAI PARA O FRONTEND
             $link =
-                $appUrl .
-                "?route=auth&action=verificarEmail&token=" .
+                $frontendUrl .
+                "/email-verificado?token=" .
                 $token;
 
             $html =
@@ -80,10 +81,6 @@ class EmailService
                 <p>O link expira em 24 horas.</p>";
 
         } else {
-
-            $frontendUrl =
-                getenv('FRONTEND_URL')
-                ?: "http://localhost:4200";
 
             $link =
                 $frontendUrl .
@@ -138,17 +135,14 @@ class EmailService
             ]
         ]);
 
-        $response =
-            curl_exec($ch);
+        $response = curl_exec($ch);
 
-        $httpCode =
-            curl_getinfo(
-                $ch,
-                CURLINFO_HTTP_CODE
-            );
+        $httpCode = curl_getinfo(
+            $ch,
+            CURLINFO_HTTP_CODE
+        );
 
-        $curlError =
-            curl_error($ch);
+        $curlError = curl_error($ch);
 
         curl_close($ch);
 
