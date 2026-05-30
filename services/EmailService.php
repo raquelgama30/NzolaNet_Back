@@ -13,7 +13,7 @@ class EmailService
         // DEBUG
         error_log(
             "BREVO KEY START: " .
-            substr($this->brevoApiKey, 0, 15)
+                substr($this->brevoApiKey, 0, 15)
         );
     }
 
@@ -70,29 +70,33 @@ class EmailService
 
         if ($type === 'verification') {
 
+            // URL do frontend
+            $frontendUrl =
+                getenv('FRONTEND_URL')
+                ?: "http://localhost:4200";
+
             $subject =
                 "Verifica o teu email — Nzolanet";
 
             $link =
-                $appUrl .
-                "?route=auth&action=verificarEmail&token=" .
+                $frontendUrl .
+                "/email-verificado?token=" .
                 $token;
 
             $html =
                 "<h2>Olá, {$nome}!</h2>
-                <p>Clica no botão abaixo para verificar o teu email:</p>
-                <p>
-                    <a href='{$link}'
-                       style='background:#102c26;
-                              color:white;
-                              padding:10px 18px;
-                              text-decoration:none;
-                              border-radius:6px;'>
-                        Verificar Email
-                    </a>
-                </p>
-                <p>O link expira em 24 horas.</p>";
-
+    <p>Clica no botão abaixo para verificar o teu email:</p>
+    <p>
+        <a href='{$link}'
+           style='background:#102c26;
+                  color:white;
+                  padding:10px 18px;
+                  text-decoration:none;
+                  border-radius:6px;'>
+            Verificar Email
+        </a>
+    </p>
+    <p>O link expira em 24 horas.</p>";
         } else {
 
             $frontendUrl =
@@ -141,7 +145,7 @@ class EmailService
         // DEBUG
         error_log(
             "BREVO DATA: " .
-            json_encode($data)
+                json_encode($data)
         );
 
         $ch = curl_init();
@@ -172,17 +176,17 @@ class EmailService
         // DEBUG
         error_log(
             "BREVO HTTP: " .
-            $httpCode
+                $httpCode
         );
 
         error_log(
             "BREVO RESPONSE: " .
-            $response
+                $response
         );
 
         error_log(
             "BREVO CURL ERROR: " .
-            $curlError
+                $curlError
         );
 
         curl_close($ch);
@@ -194,7 +198,7 @@ class EmailService
 
             error_log(
                 "Email enviado via Brevo para: " .
-                $email
+                    $email
             );
 
             return true;
@@ -202,7 +206,7 @@ class EmailService
 
         error_log(
             "Erro Brevo HTTP {$httpCode}: "
-            . $response
+                . $response
         );
 
         return false;
