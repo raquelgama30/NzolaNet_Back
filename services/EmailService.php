@@ -9,24 +9,14 @@ class EmailService
     public function __construct()
     {
         $this->brevoApiKey = EmailConfig::getBrevoApiKey();
-
-        // DEBUG
-        error_log(
-            "BREVO KEY START: " .
-                substr($this->brevoApiKey, 0, 15)
-        );
     }
 
     // ============================================
-    // EMAIL DE VERIFICAÇÃO
+    // ENVIAR EMAIL DE VERIFICAÇÃO
     // ============================================
 
-    public function sendVerificationEmail(
-        $email,
-        $nome,
-        $token
-    ): bool {
-
+    public function sendVerificationEmail($email, $nome, $token): bool
+    {
         return $this->sendViaBrevo(
             $email,
             $nome,
@@ -36,15 +26,11 @@ class EmailService
     }
 
     // ============================================
-    // RESET PASSWORD
+    // ENVIAR EMAIL DE RESET DE PASSWORD
     // ============================================
 
-    public function sendPasswordResetEmail(
-        $email,
-        $nome,
-        $token
-    ): bool {
-
+    public function sendPasswordResetEmail($email, $nome, $token): bool
+    {
         return $this->sendViaBrevo(
             $email,
             $nome,
@@ -70,33 +56,29 @@ class EmailService
 
         if ($type === 'verification') {
 
-            // URL do frontend
-            $frontendUrl =
-                getenv('FRONTEND_URL')
-                ?: "http://localhost:4200";
-
             $subject =
                 "Verifica o teu email — Nzolanet";
 
             $link =
-                $frontendUrl .
-                "/email-verificado?token=" .
+                $appUrl .
+                "?route=auth&action=verificarEmail&token=" .
                 $token;
 
             $html =
                 "<h2>Olá, {$nome}!</h2>
-    <p>Clica no botão abaixo para verificar o teu email:</p>
-    <p>
-        <a href='{$link}'
-           style='background:#102c26;
-                  color:white;
-                  padding:10px 18px;
-                  text-decoration:none;
-                  border-radius:6px;'>
-            Verificar Email
-        </a>
-    </p>
-    <p>O link expira em 24 horas.</p>";
+                <p>Clica no botão abaixo para verificar o teu email:</p>
+                <p>
+                    <a href='{$link}'
+                       style='background:#102c26;
+                              color:white;
+                              padding:10px 18px;
+                              text-decoration:none;
+                              border-radius:6px;'>
+                        Verificar Email
+                    </a>
+                </p>
+                <p>O link expira em 24 horas.</p>";
+
         } else {
 
             $frontendUrl =
@@ -142,12 +124,6 @@ class EmailService
             "htmlContent" => $html
         ];
 
-        // DEBUG
-        error_log(
-            "BREVO DATA: " .
-                json_encode($data)
-        );
-
         $ch = curl_init();
 
         curl_setopt_array($ch, [
@@ -162,7 +138,8 @@ class EmailService
             ]
         ]);
 
-        $response = curl_exec($ch);
+        $response =
+            curl_exec($ch);
 
         $httpCode =
             curl_getinfo(
@@ -173,32 +150,13 @@ class EmailService
         $curlError =
             curl_error($ch);
 
-        // DEBUG
-        error_log(
-            "BREVO HTTP: " .
-                $httpCode
-        );
-
-        error_log(
-            "BREVO RESPONSE: " .
-                $response
-        );
-
-        error_log(
-            "BREVO CURL ERROR: " .
-                $curlError
-        );
-
         curl_close($ch);
 
-        if (
-            $httpCode == 201 ||
-            $httpCode == 200
-        ) {
+        if ($httpCode == 201 || $httpCode == 200) {
 
             error_log(
                 "Email enviado via Brevo para: " .
-                    $email
+                $email
             );
 
             return true;
@@ -206,7 +164,9 @@ class EmailService
 
         error_log(
             "Erro Brevo HTTP {$httpCode}: "
-                . $response
+            . $response .
+            " CURL: " .
+            $curlError
         );
 
         return false;
