@@ -1,12 +1,13 @@
 <?php
 
+use Cloudinary\Cloudinary;
+
 class UploadService
 {
-    // Tamanho máximo imagem — 5MB
     private int $maxSizeImagem = 5 * 1024 * 1024;
-
-    // Tamanho máximo vídeo — 50MB
     private int $maxSizeVideo = 50 * 1024 * 1024;
+
+    private Cloudinary $cloudinary;
 
     private array $imageMimes = [
         'image/jpeg',
@@ -22,27 +23,29 @@ class UploadService
         'video/webm'
     ];
 
-    // ============================================================
-    // UPLOAD FOTO PERFIL
-    // ============================================================
+    public function __construct()
+    {
+        $this->cloudinary = new Cloudinary([
+            'cloud' => [
+                'cloud_name' => getenv('CLOUDINARY_CLOUD_NAME'),
+                'api_key'    => getenv('CLOUDINARY_API_KEY'),
+                'api_secret' => getenv('CLOUDINARY_API_SECRET'),
+            ],
+            'url' => [
+                'secure' => true
+            ]
+        ]);
+    }
 
     public function uploadFotoPerfil(array $file): array
     {
         return $this->uploadImagem($file, 'perfil');
     }
 
-    // ============================================================
-    // UPLOAD FOTO CAPA
-    // ============================================================
-
     public function uploadFotoCapa(array $file): array
     {
         return $this->uploadImagem($file, 'capa');
     }
-
-    // ============================================================
-    // UPLOAD MEDIA (imagem ou vídeo para publicações)
-    // ============================================================
 
     public function uploadMedia(array $file, string $tipo): array
     {
@@ -52,10 +55,6 @@ class UploadService
 
         return $this->uploadImagem($file, 'posts');
     }
-
-    // ============================================================
-    // UPLOAD IMAGEM (genérico)
-    // ============================================================
 
     private function uploadImagem(array $file, string $pasta): array
     {
@@ -73,7 +72,7 @@ class UploadService
             ];
         }
 
-        $finfo    = finfo_open(FILEINFO_MIME_TYPE);
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mimeType = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
 
@@ -84,12 +83,8 @@ class UploadService
             ];
         }
 
-        return $this->moverFicheiro($file, $pasta, $mimeType);
+        return $this->uploadCloudinary($file, $pasta, 'image');
     }
-
-    // ============================================================
-    // UPLOAD VÍDEO
-    // ============================================================
 
     private function uploadVideo(array $file): array
     {
@@ -107,7 +102,7 @@ class UploadService
             ];
         }
 
-        $finfo    = finfo_open(FILEINFO_MIME_TYPE);
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mimeType = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
 
@@ -118,57 +113,38 @@ class UploadService
             ];
         }
 
-        return $this->moverFicheiro($file, 'videos', $mimeType);
+        return $this->uploadCloudinary($file, 'videos', 'video');
     }
 
-    // ============================================================
-    // MOVER FICHEIRO PARA DISCO
-    // ============================================================
+    private function uploadCloudinary(
+        array $file,
+        string $pasta,
+        string $resourceType
+    ): array {
+        try {
 
-    private function moverFicheiro(array $file, string $pasta, string $mimeType): array
-    {
-        $extensao     = $this->getExtensao($mimeType);
-        $nomeUnico    = uniqid() . '_' . time() . '.' . $extensao;
-        $pastaDestino = __DIR__ . "/../uploads/$pasta/";
-        $caminhoFinal = $pastaDestino . $nomeUnico;
+            $resultado = $this->cloudinary
+                ->uploadApi()
+                ->upload(
+                    $file['tmp_name'],
+                    [
+                        'folder' => "nzolanet/$pasta",
+                        'resource_type' => $resourceType
+                    ]
+                );
 
-        // Criar pasta se não existir
-        if (!is_dir($pastaDestino)) {
-            mkdir($pastaDestino, 0755, true);
-        }
+            return [
+                "success" => true,
+                "url" => $resultado['secure_url'],
+                "public_id" => $resultado['public_id']
+            ];
 
-        if (!move_uploaded_file($file['tmp_name'], $caminhoFinal)) {
+        } catch (Exception $e) {
+
             return [
                 "success" => false,
-                "message" => "Erro ao guardar o ficheiro no servidor"
+                "message" => "Erro ao enviar para Cloudinary: " . $e->getMessage()
             ];
         }
-
-        $url = "https://nzolanet-back.onrender.com/uploads/$pasta/" . $nomeUnico;
-
-        return [
-            "success" => true,
-            "url"     => $url
-        ];
-    }
-
-    // ============================================================
-    // OBTER EXTENSÃO
-    // ============================================================
-
-    private function getExtensao(string $mimeType): string
-    {
-        $extensoes = [
-            'image/jpeg'      => 'jpg',
-            'image/jpg'       => 'jpg',
-            'image/png'       => 'png',
-            'image/webp'      => 'webp',
-            'video/mp4'       => 'mp4',
-            'video/mpeg'      => 'mpeg',
-            'video/quicktime' => 'mov',
-            'video/webm'      => 'webm',
-        ];
-
-        return $extensoes[$mimeType] ?? 'bin';
     }
 }
