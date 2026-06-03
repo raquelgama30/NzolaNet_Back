@@ -144,7 +144,7 @@ class UploadService
             ];
         }
 
-        $url = "http://localhost:8081/NzolaNet/backend/uploads/$pasta/" . $nomeUnico;
+        $url = "https://nzolanet-back.onrender.com/uploads/$pasta/" . $nomeUnico;
 
         return [
             "success" => true,
