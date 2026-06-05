@@ -21,36 +21,36 @@ class UploadController extends BaseController
     // ============================================================
 
     public function uploadFotoPerfil(string $userId): void
-    {
-        if (!isset($_FILES['foto'])) {
-            $this->json([
-                "success" => false,
-                "message" => "Nenhum ficheiro enviado"
-            ], 400);
-        }
-
-        $result = $this->uploadService->uploadFotoPerfil($_FILES['foto']);
-
-        if (!$result['success']) {
-            $this->json([
-                "success" => false,
-                "message" => $result['message']
-            ], 400);
-        }
-
-        // Atualizar URL na base de dados
-        $updated = $this->userRepository->updateFotoPerfil(
-            $userId,
-            $result['url']
-        );
-
+{
+    if (!isset($_FILES['foto'])) {
         $this->json([
-            "success" => $updated,
-            "message" => $updated ? "Foto de perfil atualizada" : "Erro ao guardar",
-            "data"    => ["url" => $result['url']]
-        ]);
+            "success" => false,
+            "message" => "Nenhum ficheiro enviado"
+        ], 400);
+        return; // ← faltava aqui
     }
 
+    $result = $this->uploadService->uploadFotoPerfil($_FILES['foto']);
+
+    if (!$result['success']) {
+        $this->json([
+            "success" => false,
+            "message" => $result['message']
+        ], 400);
+        return; // ← e aqui
+    }
+
+    $updated = $this->userRepository->updateFotoPerfil(
+        $userId,
+        $result['url']
+    );
+
+    $this->json([
+        "success" => $updated,
+        "message" => $updated ? "Foto de perfil atualizada" : "Erro ao guardar",
+        "data"    => ["url" => $result['url']]
+    ]);
+}
     // ============================================================
     // UPLOAD FOTO CAPA
     // ============================================================
