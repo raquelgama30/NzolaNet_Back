@@ -52,7 +52,7 @@ class EmailService
 
         $frontendUrl =
             getenv('FRONTEND_URL')
-            ?: "http://localhost:4200";
+            ?: "https://nzola-net.vercel.app";
 
         if ($type === 'verification') {
 
@@ -62,7 +62,7 @@ class EmailService
             // AGORA VAI PARA O FRONTEND
             $link =
                 $frontendUrl .
-                "/email-verificado?token=" .
+                "/confirmar-registo?token=" .
                 $token;
 
             $html =
