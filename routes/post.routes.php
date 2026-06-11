@@ -54,7 +54,7 @@ switch ($action) {
     // GET ?route=post&action=meusPosts&page=1&limit=10
     case 'meusPosts':
         $page  = (int) ($_GET['page']  ?? 1);
-        $limit = (int) ($_GET['limit'] ?? 10);
+        $limit = (int) ($_GET['limit'] ?? 1000);
         $controller->getMyPosts($authUser->id, $page, $limit);
         break;
 
@@ -72,13 +72,13 @@ switch ($action) {
     // Se não segue ninguém → posts de perfis públicos
     case 'feed':
         $page  = (int) ($_GET['page']  ?? 1);
-        $limit = (int) ($_GET['limit'] ?? 10);
+        $limit = (int) ($_GET['limit'] ?? 1000);
         $controller->feed($authUser->id, $page, $limit);
         break;
     // GET ?route=post&action=explore&page=1&limit=10
     case 'explore':
         $page  = (int) ($_GET['page'] ?? 1);
-        $limit = (int) ($_GET['limit'] ?? 10);
+        $limit = (int) ($_GET['limit'] ?? 1000);
 
         $controller->explore($page, $limit);
         break;
