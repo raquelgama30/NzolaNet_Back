@@ -46,7 +46,15 @@ class PostController extends BaseController
         $posts = $this->service->getFeed($userId, $page, $limit);
         $this->json(["success" => true, "data" => $posts]);
     }
+    public function explore(int $page, int $limit): void
+    {
+        $posts = $this->service->getExplore($page, $limit);
 
+        $this->json([
+            "success" => true,
+            "data" => $posts
+        ]);
+    }
     public function getById(string $id, string $authUserId): void
     {
         $post = $this->service->getById($id, $authUserId);

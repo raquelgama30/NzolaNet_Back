@@ -9,7 +9,7 @@ class PostService extends BaseService implements IPostService
     private IBazeRepository      $bazeRepository;
     private ICommentRepository   $commentRepository;
     private IUserRepository      $userRepository;
-    private IPostShareRepository $postShareRepository;  
+    private IPostShareRepository $postShareRepository;
 
     public function __construct(
         IPostRepository      $postRepository,
@@ -17,7 +17,7 @@ class PostService extends BaseService implements IPostService
         IBazeRepository      $bazeRepository,
         ICommentRepository   $commentRepository,
         IUserRepository      $userRepository,
-        IPostShareRepository $postShareRepository  
+        IPostShareRepository $postShareRepository
     ) {
         $this->postRepository    = $postRepository;
         $this->mediaRepository   = $mediaRepository;
@@ -30,11 +30,11 @@ class PostService extends BaseService implements IPostService
     public function create(string $userId, PostDTO $dto): bool
     {
         $post = new Post(
-            id:            $this->generateUUID(),
-            user_id:       $userId,
-            conteudo:      $dto->conteudo,
-            eliminado:     false,
-            criado_em:     date("Y-m-d H:i:s"),
+            id: $this->generateUUID(),
+            user_id: $userId,
+            conteudo: $dto->conteudo,
+            eliminado: false,
+            criado_em: date("Y-m-d H:i:s"),
             atualizado_em: date("Y-m-d H:i:s")
         );
         return $this->postRepository->create($post);
@@ -58,6 +58,12 @@ class PostService extends BaseService implements IPostService
         } else {
             $posts = $this->postRepository->getPublicFeed($page, $limit);
         }
+        return array_map([$this, 'enriquecerComMedia'], $posts);
+    }
+    public function getExplore(int $page, int $limit): array
+    {
+        $posts = $this->postRepository->getPublicFeed($page, $limit);
+
         return array_map([$this, 'enriquecerComMedia'], $posts);
     }
 
@@ -90,18 +96,18 @@ class PostService extends BaseService implements IPostService
         $totalComentarios = $this->commentRepository->countByPost($post->id);
 
         return new PostComMediaDTO(
-            id:                $post->id,
-            user_id:           $post->user_id,
-            autor_nome:        $autor?->nome          ?? "Utilizador removido",
-            autor_username:    $autor?->username       ?? null,
+            id: $post->id,
+            user_id: $post->user_id,
+            autor_nome: $autor?->nome          ?? "Utilizador removido",
+            autor_username: $autor?->username       ?? null,
             autor_foto_perfil: $autor?->foto_perfil    ?? null,
-            conteudo:          $post->conteudo,
-            eliminado:         $post->eliminado,
-            criado_em:         $post->criado_em,
-            atualizado_em:     $post->atualizado_em,
-            total_bazes:       $totalBazes,
+            conteudo: $post->conteudo,
+            eliminado: $post->eliminado,
+            criado_em: $post->criado_em,
+            atualizado_em: $post->atualizado_em,
+            total_bazes: $totalBazes,
             total_comentarios: $totalComentarios,
-            media:             $media
+            media: $media
         );
     }
 
