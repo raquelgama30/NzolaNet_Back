@@ -108,7 +108,7 @@ class UserController extends BaseController
 
     public function desativar(string $id): void
     {
-        $result = $this->service->deleteUser($id);
+        $result = $this->service->desativar($id);
         $this->json([
             "success" => $result,
             "message" => $result ? "Conta desativada" : "Erro ao desativar"
