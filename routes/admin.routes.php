@@ -14,7 +14,12 @@ switch ($action) {
     case 'listarUtilizadores':
         $userController->listarTodos();
         break;
-
+    case 'adminMetrics':
+        echo json_encode([
+            "success" => true,
+            "data" => $adminService->getAdminMetrics()
+        ]);
+        exit;
     // PUT ?route=admin&action=ativarUtilizador
     case 'ativarUtilizador':
         $id = $input['id'] ?? '';

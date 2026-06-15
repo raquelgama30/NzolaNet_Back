@@ -74,6 +74,11 @@ switch ($action) {
         }
         $controller->pesquisar($query);
         break;
+        
+    case 'pessoasQueTalvezConheca':
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+        $controller->pessoasQueTalvezConheca($authUser->id, $limit);
+        break;
 
     // DELETE ?route=user&action=removerFotoPerfil
     case 'removerFotoPerfil':

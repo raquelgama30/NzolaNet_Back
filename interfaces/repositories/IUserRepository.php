@@ -31,6 +31,8 @@ interface IUserRepository {
     public function tornarAdmin(string $userId): bool;
 
     public function removerAdmin(string $userId): bool;
+    // Interface IUserRepository
+    public function findRandomExcluding(array $excludeIds, int $limit): array;
 
     /** @return UserDTO[] */
     public function getAllUsers(): array;

@@ -541,7 +541,96 @@ class UserService extends BaseService implements IUserService
 
         return $this->userRepository->findById($user->id);
     }
+   // ============================================================
+    // SUGESTÕES — PESSOAS QUE TALVEZ CONHEÇA
+    // ============================================================
 
+    public function obterSugestoes(string $userId, int $limit = 10): array
+    {
+        // 1. Quem eu sigo
+        $seguindoDtos = $this->followRepository->getFollowing($userId);
+        $seguindo = array_map(fn($f) => (string)$f->seguido_id, $seguindoDtos);
+
+        // 2. Quem me segue
+        $seguidoresDtos = $this->followRepository->getFollowers($userId);
+        $seguidores = array_map(fn($f) => (string)$f->seguidor_id, $seguidoresDtos);
+
+        // 3. Minha rede directa (sem duplicados)
+        $redeDirecta = array_unique(array_merge($seguindo, $seguidores));
+
+        $contagem = [];
+
+        if (!empty($redeDirecta)) {
+            // 4. Para cada pessoa da minha rede, ver quem ela segue
+            foreach ($redeDirecta as $amigoId) {
+                $seguidosPeloAmigoDtos = $this->followRepository->getFollowing($amigoId);
+
+                foreach ($seguidosPeloAmigoDtos as $f) {
+                    $candidatoId = (string)$f->seguido_id;
+
+                    if ($candidatoId === $userId) continue;
+                    if (in_array($candidatoId, $seguindo, true)) continue;
+
+                    $contagem[$candidatoId] = ($contagem[$candidatoId] ?? 0) + 1;
+                }
+            }
+        }
+
+        $sugestoes = [];
+
+        if (!empty($contagem)) {
+            foreach (array_keys($contagem) as $candidatoId) {
+                $u = $this->userRepository->findById($candidatoId);
+                if (!$u) continue;
+
+                if ($u->is_admin) continue;
+                if (!$u->is_active) continue;
+                // privados podem aparecer — sem filtro de privacidade
+
+                $sugestoes[] = [
+                    'id'                => $u->id,
+                    'nome'              => $u->nome,
+                    'username'          => $u->username,
+                    'foto_perfil'       => $u->foto_perfil,
+                    'bio'               => $u->bio,
+                    'privacidade'       => $u->privacidade,
+                    'conexoes_em_comum' => $contagem[$candidatoId]
+                ];
+            }
+
+            // 5. Ordenar por mais conexões em comum
+            usort($sugestoes, fn($a, $b) => $b['conexoes_em_comum'] - $a['conexoes_em_comum']);
+        }
+
+        // 6. Fallback: completar com utilizadores aleatórios se não houver suficientes
+        if (count($sugestoes) < $limit) {
+            $excluir = array_unique(array_merge(
+                [$userId],
+                $seguindo,
+                array_column($sugestoes, 'id')
+            ));
+
+            $faltam = $limit - count($sugestoes);
+            $extras = $this->userRepository->findRandomExcluding($excluir, $faltam);
+
+            foreach ($extras as $u) {
+                if ($u->is_admin) continue;
+                if (!$u->is_active) continue;
+
+                $sugestoes[] = [
+                    'id'                => $u->id,
+                    'nome'              => $u->nome,
+                    'username'          => $u->username,
+                    'foto_perfil'       => $u->foto_perfil,
+                    'bio'               => $u->bio,
+                    'privacidade'       => $u->privacidade,
+                    'conexoes_em_comum' => 0
+                ];
+            }
+        }
+
+        return array_slice($sugestoes, 0, $limit);
+    }
     // ============================================================
     // ENVIAR EMAIL DE VERIFICAÇÃO (chamado depois de responder)
     // ============================================================

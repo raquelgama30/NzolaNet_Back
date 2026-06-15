@@ -50,7 +50,35 @@ class UserRepository implements IUserRepository
             "password_hash" => $data['password_hash']
         ];
     }
+    // Implementação UserRepository.php
+    public function findRandomExcluding(array $excludeIds, int $limit): array
+    {
+        if ($limit <= 0) return [];
 
+        if (!empty($excludeIds)) {
+            $placeholders = implode(',', array_fill(0, count($excludeIds), '?'));
+            $sql = "SELECT * FROM utilizadores 
+                    WHERE id NOT IN ($placeholders) 
+                    AND is_admin = false 
+                    AND is_active = true 
+                    ORDER BY RANDOM() 
+                    LIMIT ?";
+            $params = array_merge(array_values($excludeIds), [$limit]);
+        } else {
+            $sql = "SELECT * FROM utilizadores 
+                    WHERE is_admin = false 
+                    AND is_active = true 
+                    ORDER BY RANDOM() 
+                    LIMIT ?";
+            $params = [$limit];
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        // usar o mesmo método de mapeamento já utilizado em findById/getAllUsers
+        return array_map(fn($row) => $this->mapToDTO($row), $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
     public function findByUsername(string $username): ?UserDTO
     {
         $sql  = "SELECT * FROM users WHERE username = :username LIMIT 1";
@@ -244,6 +272,66 @@ class UserRepository implements IUserRepository
     {
         $sql = "UPDATE users SET foto_perfil = NULL WHERE id = :id";
         return $this->conn->prepare($sql)->execute([":id" => $userId]);
+    }
+
+    public function getAdminMetrics(): array
+    {
+        // Total de utilizadores
+        $totalUsers = $this->conn->query("SELECT COUNT(*) FROM users")->fetchColumn();
+
+        // Utilizadores ativos hoje (últimos 24h)
+        $activeToday = $this->conn->query("
+            SELECT COUNT(DISTINCT id)
+            FROM users
+            WHERE ultimo_acesso >= NOW() - INTERVAL 1 DAY
+        ")->fetchColumn();
+
+        // Utilizadores ativos semana
+        $activeWeek = $this->conn->query("
+            SELECT COUNT(DISTINCT id)
+            FROM users
+            WHERE ultimo_acesso >= NOW() - INTERVAL 7 DAY
+        ")->fetchColumn();
+
+        // Utilizadores ativos mês
+        $activeMonth = $this->conn->query("
+            SELECT COUNT(DISTINCT id)
+            FROM users
+            WHERE ultimo_acesso >= NOW() - INTERVAL 30 DAY
+        ")->fetchColumn();
+
+        // Novos registos por dia (últimos 7 dias)
+        $newUsersPerDay = $this->conn->query("
+            SELECT DATE(criado_em) as dia, COUNT(*) as total
+            FROM users
+            WHERE criado_em >= NOW() - INTERVAL 7 DAY
+            GROUP BY DATE(criado_em)
+            ORDER BY dia DESC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        // Taxa de crescimento (%)
+        $lastMonth = $this->conn->query("
+            SELECT COUNT(*) FROM users
+            WHERE criado_em < NOW() - INTERVAL 30 DAY
+        ")->fetchColumn();
+
+        $thisMonth = $this->conn->query("
+            SELECT COUNT(*) FROM users
+            WHERE criado_em >= NOW() - INTERVAL 30 DAY
+        ")->fetchColumn();
+
+        $growthRate = $lastMonth > 0
+            ? (($thisMonth - $lastMonth) / $lastMonth) * 100
+            : 100;
+
+        return [
+            "total_users" => (int)$totalUsers,
+            "active_today" => (int)$activeToday,
+            "active_week" => (int)$activeWeek,
+            "active_month" => (int)$activeMonth,
+            "new_users_per_day" => $newUsersPerDay,
+            "growth_rate" => round($growthRate, 2)
+        ];
     }
 
     public function removerFotoCapa(string $userId): bool

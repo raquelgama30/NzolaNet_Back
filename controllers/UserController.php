@@ -52,6 +52,22 @@ class UserController extends BaseController
         ]);
     }
 
+    public function pessoasQueTalvezConheca(string $userId, int $limit = 10): void
+    {
+        try {
+            $resultado = $this->userService->obterSugestoes($userId, $limit);
+            echo json_encode([
+                "success" => true,
+                "data" => $resultado
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                "success" => false,
+                "message" => $e->getMessage()
+            ]);
+        }
+    }
     public function eliminar(string $id): void
     {
         $result = $this->service->eliminarPermanente($id);
