@@ -49,7 +49,27 @@ switch ($action) {
 
         $userController->desativar($id);
         break;
-
+    // DELETE ?route=admin&action=eliminarUtilizador
+    case 'eliminarUtilizador':
+        $id = $input['id'] ?? '';
+    
+        if (empty($id)) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "id é obrigatório"]);
+            exit();
+        }
+    
+        if ($id === $adminUser->id) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "message" => "Não podes eliminar a tua própria conta"
+            ]);
+            exit();
+        }
+    
+        $userController->eliminar($id);
+        break;
     // DELETE ?route=admin&action=eliminarComentario
     case 'eliminarComentario':
         $id = $input['id'] ?? '';
