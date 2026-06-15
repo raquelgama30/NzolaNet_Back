@@ -352,6 +352,10 @@ class UserService extends BaseService implements IUserService
     {
         return $this->userRepository->activateUser($id);
     }
+    public function desativar(string $id): bool
+    {
+        return $this->userRepository->deactivate($id);
+    }
     public function eliminarPermanente(string $id): bool
 {
     $user = $this->userRepository->findById($id);
