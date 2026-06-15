@@ -51,15 +51,17 @@ class PostService extends BaseService implements IPostService
         return $this->enriquecerComMedia($post);
     }
 
-    public function getFeed(string $userId, int $page, int $limit): array
-    {
-        if ($this->postRepository->hasFollowing($userId)) {
-            $posts = $this->postRepository->getFollowingFeed($userId, $page, $limit);
-        } else {
-            $posts = $this->postRepository->getPublicFeed($page, $limit);
-        }
-        return array_map([$this, 'enriquecerComMedia'], $posts);
-    }
+public function getFeed(string $userId, int $page, int $limit): array
+{
+    $followingPosts = $this->postRepository->getFollowingFeed($userId, $page, $limit);
+    $publicPosts    = $this->postRepository->getPublicFeed($page, $limit);
+
+    $posts = array_merge($followingPosts, $publicPosts);
+
+    usort($posts, fn($a, $b) => strtotime($b->criado_em) <=> strtotime($a->criado_em));
+
+    return array_map([$this, 'enriquecerComMedia'], $posts);
+}
     public function getExplore(int $page, int $limit): array
     {
         $posts = $this->postRepository->getPublicFeed($page, $limit);
