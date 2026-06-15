@@ -469,9 +469,6 @@ class UserService extends BaseService implements IUserService
             $this->reportRepository->deleteAllByUserId($id);
         }
 
-        // 8. Eliminar tokens de verificação de email
-        $this->emailVerificationRepository->deleteAllByUserId($id);
-
         // 9. Eliminar o registo definitivamente
         return $this->userRepository->delete($id);
     }
