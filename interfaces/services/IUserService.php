@@ -39,4 +39,6 @@ interface IUserService {
     public function listarTodos(): array;
 
     public function ativar(string $id): bool;
+
+    public function eliminarPermanente(string $id): bool;
 }
