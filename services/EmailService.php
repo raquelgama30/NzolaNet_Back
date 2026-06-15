@@ -84,9 +84,9 @@ class EmailService
 
             $link =
                 $frontendUrl .
-                "/recuperar-password/" .
+                "/recuperar-senha/:" .
                 $token;
-
+                
             $subject =
                 "Recuperação de password — Nzolanet";
 
