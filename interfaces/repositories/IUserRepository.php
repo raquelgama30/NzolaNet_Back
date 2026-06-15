@@ -36,6 +36,7 @@ interface IUserRepository {
     public function activateUser(string $userId): bool;
 
     public function deactivate(string $userId): bool;
+    public function delete(string $userId): bool;
 
     /** @return UserDTO[] */
     public function searchUsers(string $query): array;
