@@ -203,7 +203,14 @@ class UserRepository implements IUserRepository
         $sql = "UPDATE users SET is_active = false WHERE id = :id";
         return $this->conn->prepare($sql)->execute([":id" => $userId]);
     }
-
+    public function delete(string $userId): bool
+    {
+        $sql = "DELETE FROM users WHERE id = :id";
+    
+        return $this->conn->prepare($sql)->execute([
+            ":id" => $userId
+        ]);
+    }
     public function searchUsers(string $query): array
     {
         $sql  = "SELECT * FROM users WHERE nome LIKE :q OR username LIKE :q";
