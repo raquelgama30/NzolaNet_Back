@@ -27,6 +27,48 @@ switch ($action) {
 
         $userController->ativar($id);
         break;
+        case 'tornarAdmin':
+        $id = $input['id'] ?? '';
+
+        if (empty($id)) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "message" => "ID obrigatório"
+            ]);
+            exit;
+        }
+
+        $success = $userService->tornarAdmin($id);
+
+        echo json_encode([
+            "success" => $success,
+            "message" => $success
+                ? "Utilizador promovido a administrador"
+                : "Erro ao promover utilizador"
+        ]);
+        break;
+    case 'removerAdmin':
+        $id = $input['id'] ?? '';
+
+        if (empty($id)) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "message" => "ID obrigatório"
+            ]);
+            exit;
+        }
+
+        $success = $userService->removerAdmin($id);
+
+        echo json_encode([
+            "success" => $success,
+            "message" => $success
+                ? "Administrador convertido para utilizador normal"
+                : "Erro ao atualizar utilizador"
+        ]);
+        break;
 
     // PUT ?route=admin&action=desativarUtilizador
     case 'desativarUtilizador':
@@ -166,48 +208,6 @@ switch ($action) {
                 }
 
                 $reportController->resolve($reportId, $adminUser->id);
-                break;
-            case 'tornarAdmin':
-                $id = $input['id'] ?? '';
-
-                if (empty($id)) {
-                    http_response_code(400);
-                    echo json_encode([
-                        "success" => false,
-                        "message" => "ID obrigatório"
-                    ]);
-                    exit;
-                }
-
-                $success = $userService->tornarAdmin($id);
-
-                echo json_encode([
-                    "success" => $success,
-                    "message" => $success
-                        ? "Utilizador promovido a administrador"
-                        : "Erro ao promover utilizador"
-                ]);
-                break;
-            case 'removerAdmin':
-                $id = $input['id'] ?? '';
-
-                if (empty($id)) {
-                    http_response_code(400);
-                    echo json_encode([
-                        "success" => false,
-                        "message" => "ID obrigatório"
-                    ]);
-                    exit;
-                }
-
-                $success = $userService->removerAdmin($id);
-
-                echo json_encode([
-                    "success" => $success,
-                    "message" => $success
-                        ? "Administrador convertido para utilizador normal"
-                        : "Erro ao atualizar utilizador"
-                ]);
                 break;
 
             default:

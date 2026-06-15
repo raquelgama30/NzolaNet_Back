@@ -18,7 +18,10 @@ interface IUserService {
     public function removerFotoCapa(string $id): bool;
 
     public function updatePassword(string $id, string $password): bool;
+    
+    public function tornarAdmin(string $id): bool;
 
+    public function removerAdmin(string $id): bool;
     /**
      * Verifica a password atual antes de alterar
      * Devolve false se a password atual estiver errada

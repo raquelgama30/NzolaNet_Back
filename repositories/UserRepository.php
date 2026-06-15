@@ -192,6 +192,23 @@ class UserRepository implements IUserRepository
         ]);
     }
 
+    public function tornarAdmin(string $userId): bool
+    {
+        $sql = "UPDATE users SET is_admin = true WHERE id = :id";
+
+        return $this->conn->prepare($sql)->execute([
+            ":id" => $userId
+        ]);
+    }
+
+    public function removerAdmin(string $userId): bool
+    {
+        $sql = "UPDATE users SET is_admin = false WHERE id = :id";
+
+        return $this->conn->prepare($sql)->execute([
+            ":id" => $userId
+        ]);
+    }
     public function activateUser(string $userId): bool
     {
         $sql = "UPDATE users SET is_active = true WHERE id = :id";

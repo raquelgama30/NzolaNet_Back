@@ -28,6 +28,10 @@ interface IUserRepository {
 
     public function removerFotoCapa(string $userId): bool;
 
+    public function tornarAdmin(string $userId): bool;
+
+    public function removerAdmin(string $userId): bool;
+
     /** @return UserDTO[] */
     public function getAllUsers(): array;
 
