@@ -473,6 +473,15 @@ class UserService extends BaseService implements IUserService
         return $this->userRepository->delete($id);
     }
 
+    public function tornarAdmin(string $id): bool
+    {
+        return $this->userRepository->tornarAdmin($id);
+    }
+
+    public function removerAdmin(string $id): bool
+    {
+        return $this->userRepository->removerAdmin($id);
+    }
     // ============================================================
     // REGISTO SEM EMAIL (responde rápido)
     // ============================================================
