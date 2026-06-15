@@ -352,6 +352,47 @@ class UserService extends BaseService implements IUserService
     {
         return $this->userRepository->activateUser($id);
     }
+    public function eliminarPermanente(string $id): bool
+{
+    $user = $this->userRepository->findById($id);
+    if (!$user) return false;
+
+    // 1. Apagar ficheiros de perfil/capa
+    if ($user->foto_perfil) $this->apagarFicheiro($user->foto_perfil);
+    if ($user->foto_capa) $this->apagarFicheiro($user->foto_capa);
+
+    // 2. Eliminar todos os posts (com cascata: media, bazes, comentários, shares)
+    $posts = $this->postRepository->getFeedByUser($id, 1, 9999);
+    foreach ($posts as $post) {
+        $this->postService->delete($post->id, $id);
+    }
+
+    // 3. Eliminar follows
+    $this->followRepository->deleteAllByUserId($id);
+
+    // 4. Eliminar blocks
+    $this->blockRepository->deleteAllByUserId($id);
+
+    // 5. Eliminar conversas (mensagens apagam em cascata)
+    $conversas = $this->conversationRepository->getByUser($id);
+    foreach ($conversas as $conversa) {
+        $this->conversationRepository->delete($conversa->id);
+    }
+
+    // 6. Terminar sessões
+    $this->sessionRepository->deleteAllByUserId($id);
+
+    // 7. Eliminar reports relacionados (como autor/alvo e como reporter)
+    if (isset($this->reportRepository)) {
+        $this->reportRepository->deleteAllByUserId($id);
+    }
+
+    // 8. Eliminar tokens de verificação de email
+    $this->emailVerificationRepository->deleteAllByUserId($id);
+
+    // 9. Eliminar o registo definitivamente
+    return $this->userRepository->delete($id);
+}
 
       // ============================================================
     // REGISTO SEM EMAIL (responde rápido)
