@@ -52,6 +52,15 @@ class UserController extends BaseController
         ]);
     }
 
+    public function eliminar(string $id): void
+    {
+        $result = $this->service->eliminarPermanente($id);
+        $this->json([
+            "success" => $result,
+            "message" => $result ? "Utilizador eliminado permanentemente" : "Erro ao eliminar utilizador"
+        ]);
+    }
+
     public function pesquisar(string $query): void
     {
         $users = $this->service->pesquisar($query);
