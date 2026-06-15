@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 class UserService extends BaseService implements IUserService
 {
-    
+
     private IUserRepository              $userRepository;
     private IEmailVerificationRepository $emailVerificationRepository;
     private EmailService                 $emailService;
@@ -47,6 +47,86 @@ class UserService extends BaseService implements IUserService
 
     public function register(UserRegisterDTO $dto): UserDTO
     {
+        // ============================================================
+        // VALIDAÇÕES
+        // ============================================================
+
+        // Nome
+        if (empty(trim($dto->nome))) {
+            throw new Exception("O nome é obrigatório.");
+        }
+        if (strlen(trim($dto->nome)) < 2) {
+            throw new Exception("O nome deve ter pelo menos 2 caracteres.");
+        }
+        if (strlen(trim($dto->nome)) > 100) {
+            throw new Exception("O nome não pode ter mais de 100 caracteres.");
+        }
+
+        // Username
+        if (empty(trim($dto->username))) {
+            throw new Exception("O username é obrigatório.");
+        }
+        if (strlen(trim($dto->username)) < 3) {
+            throw new Exception("O username deve ter pelo menos 3 caracteres.");
+        }
+        if (strlen(trim($dto->username)) > 30) {
+            throw new Exception("O username não pode ter mais de 30 caracteres.");
+        }
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $dto->username)) {
+            throw new Exception("O username só pode conter letras, números e underscore.");
+        }
+
+        // Email
+        if (empty(trim($dto->email))) {
+            throw new Exception("O email é obrigatório.");
+        }
+        if (!filter_var($dto->email, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception("O email introduzido não é válido.");
+        }
+
+        // Password
+        if (empty($dto->password)) {
+            throw new Exception("A password é obrigatória.");
+        }
+        if (strlen($dto->password) < 8) {
+            throw new Exception("A password deve ter pelo menos 8 caracteres.");
+        }
+        if (strlen($dto->password) > 100) {
+            throw new Exception("A password não pode ter mais de 100 caracteres.");
+        }
+        if (!preg_match('/[A-Z]/', $dto->password)) {
+            throw new Exception("A password deve ter pelo menos uma letra maiúscula.");
+        }
+        if (!preg_match('/[a-z]/', $dto->password)) {
+            throw new Exception("A password deve ter pelo menos uma letra minúscula.");
+        }
+        if (!preg_match('/[0-9]/', $dto->password)) {
+            throw new Exception("A password deve ter pelo menos um número.");
+        }
+
+        // Data de nascimento
+        if (empty($dto->data_nascimento)) {
+            throw new Exception("A data de nascimento é obrigatória.");
+        }
+        $dataNasc = new DateTime($dto->data_nascimento);
+        $hoje     = new DateTime();
+        $idade    = $hoje->diff($dataNasc)->y;
+        if ($idade < 18) {
+            throw new Exception("É necessário ter pelo menos 18 anos para se registar.");
+        }
+
+        // Género
+        if (empty($dto->genero)) {
+            throw new Exception("O género é obrigatório.");
+        }
+        if (!in_array($dto->genero, ['masculino', 'feminino'])) {
+            throw new Exception("Género inválido.");
+        }
+
+        // ============================================================
+        // LÓGICA DE REGISTO
+        // ============================================================
+
         $start = microtime(true);
 
         if ($this->userRepository->findByEmail($dto->email)) {
@@ -103,14 +183,11 @@ class UserService extends BaseService implements IUserService
         $this->emailVerificationRepository->create($emailToken);
         error_log("insert token: " . round(microtime(true) - $start, 2));
 
-        // Guardar variáveis para usar no shutdown
-        $emailService  = $this->emailService;
-        $emailAddr     = $dto->email;
-        $emailNome     = $dto->nome;
-        $emailPlain    = $plainToken;
+        $emailService = $this->emailService;
+        $emailAddr    = $dto->email;
+        $emailNome    = $dto->nome;
+        $emailPlain   = $plainToken;
 
-        // Enviar email DEPOIS de responder ao cliente
-        // O utilizador não espera pelo envio
         register_shutdown_function(
             function () use ($emailService, $emailAddr, $emailNome, $emailPlain) {
                 $emailService->sendVerificationEmail(
@@ -126,6 +203,7 @@ class UserService extends BaseService implements IUserService
 
         return $this->userRepository->findById($user->id);
     }
+
     // ============================================================
     // LOGIN
     // ============================================================
@@ -357,48 +435,48 @@ class UserService extends BaseService implements IUserService
         return $this->userRepository->deactivate($id);
     }
     public function eliminarPermanente(string $id): bool
-{
-    $user = $this->userRepository->findById($id);
-    if (!$user) return false;
+    {
+        $user = $this->userRepository->findById($id);
+        if (!$user) return false;
 
-    // 1. Apagar ficheiros de perfil/capa
-    if ($user->foto_perfil) $this->apagarFicheiro($user->foto_perfil);
-    if ($user->foto_capa) $this->apagarFicheiro($user->foto_capa);
+        // 1. Apagar ficheiros de perfil/capa
+        if ($user->foto_perfil) $this->apagarFicheiro($user->foto_perfil);
+        if ($user->foto_capa) $this->apagarFicheiro($user->foto_capa);
 
-    // 2. Eliminar todos os posts (com cascata: media, bazes, comentários, shares)
-    $posts = $this->postRepository->getFeedByUser($id, 1, 9999);
-    foreach ($posts as $post) {
-        $this->postService->delete($post->id, $id);
+        // 2. Eliminar todos os posts (com cascata: media, bazes, comentários, shares)
+        $posts = $this->postRepository->getFeedByUser($id, 1, 9999);
+        foreach ($posts as $post) {
+            $this->postService->delete($post->id, $id);
+        }
+
+        // 3. Eliminar follows
+        $this->followRepository->deleteAllByUserId($id);
+
+        // 4. Eliminar blocks
+        $this->blockRepository->deleteAllByUserId($id);
+
+        // 5. Eliminar conversas (mensagens apagam em cascata)
+        $conversas = $this->conversationRepository->getByUser($id);
+        foreach ($conversas as $conversa) {
+            $this->conversationRepository->delete($conversa->id);
+        }
+
+        // 6. Terminar sessões
+        $this->sessionRepository->deleteAllByUserId($id);
+
+        // 7. Eliminar reports relacionados (como autor/alvo e como reporter)
+        if (isset($this->reportRepository)) {
+            $this->reportRepository->deleteAllByUserId($id);
+        }
+
+        // 8. Eliminar tokens de verificação de email
+        $this->emailVerificationRepository->deleteAllByUserId($id);
+
+        // 9. Eliminar o registo definitivamente
+        return $this->userRepository->delete($id);
     }
 
-    // 3. Eliminar follows
-    $this->followRepository->deleteAllByUserId($id);
-
-    // 4. Eliminar blocks
-    $this->blockRepository->deleteAllByUserId($id);
-
-    // 5. Eliminar conversas (mensagens apagam em cascata)
-    $conversas = $this->conversationRepository->getByUser($id);
-    foreach ($conversas as $conversa) {
-        $this->conversationRepository->delete($conversa->id);
-    }
-
-    // 6. Terminar sessões
-    $this->sessionRepository->deleteAllByUserId($id);
-
-    // 7. Eliminar reports relacionados (como autor/alvo e como reporter)
-    if (isset($this->reportRepository)) {
-        $this->reportRepository->deleteAllByUserId($id);
-    }
-
-    // 8. Eliminar tokens de verificação de email
-    $this->emailVerificationRepository->deleteAllByUserId($id);
-
-    // 9. Eliminar o registo definitivamente
-    return $this->userRepository->delete($id);
-}
-
-      // ============================================================
+    // ============================================================
     // REGISTO SEM EMAIL (responde rápido)
     // ============================================================
 
@@ -477,5 +555,4 @@ class UserService extends BaseService implements IUserService
             );
         }
     }
-    
 }
