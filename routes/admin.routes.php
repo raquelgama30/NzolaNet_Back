@@ -17,7 +17,7 @@ switch ($action) {
     case 'adminMetrics':
         echo json_encode([
             "success" => true,
-            "data" => $adminService->getAdminMetrics()
+            "data" => $userController->getAdminMetrics()
         ]);
         break;
     // PUT ?route=admin&action=ativarUtilizador

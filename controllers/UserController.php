@@ -55,7 +55,7 @@ class UserController extends BaseController
     public function pessoasQueTalvezConheca(string $userId, int $limit = 10): void
     {
         try {
-            $resultado = $this->userService->obterSugestoes($userId, $limit);
+            $resultado = $this->service->obterSugestoes($userId, $limit); // ✅ $this->service
             echo json_encode([
                 "success" => true,
                 "data" => $resultado
@@ -129,5 +129,10 @@ class UserController extends BaseController
             "success" => $result,
             "message" => $result ? "Conta desativada" : "Erro ao desativar"
         ]);
+    }
+
+    public function getAdminMetrics(): array
+    {
+        return $this->userRepository->getAdminMetrics();
     }
 }

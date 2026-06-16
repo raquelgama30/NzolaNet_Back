@@ -420,7 +420,10 @@ class UserService extends BaseService implements IUserService
     // ============================================================
     // ADMIN
     // ============================================================
-
+    public function getAdminMetrics(): array
+    {
+        return $this->userRepository->getAdminMetrics();
+    }
     public function listarTodos(): array
     {
         return $this->userRepository->getAllUsers();
