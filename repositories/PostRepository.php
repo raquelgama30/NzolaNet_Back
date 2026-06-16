@@ -89,14 +89,22 @@ class PostRepository implements IPostRepository
     // FEED DOS SEGUIDOS
     // ============================================================
 
-    public function getFollowingFeed(string $userId, int $page, int $limit): array
+   public function getFollowingFeed(string $userId, string $authUserId, int $page, int $limit): array
     {
         $offset = ($page - 1) * $limit;
 
         $sql = "
-            SELECT p.*
+            SELECT p.*,
+                u.nome AS autor_nome,
+                u.username AS autor_username,
+                u.foto_perfil AS autor_foto_perfil,
+                u.privacidade AS autor_privacidade,
+                (SELECT COUNT(*) FROM bazes WHERE post_id = p.id) AS total_bazes,
+                (SELECT COUNT(*) FROM comments WHERE post_id = p.id AND eliminado = false) AS total_comentarios,
+                (SELECT COUNT(*) > 0 FROM bazes WHERE post_id = p.id AND user_id = :auth_user_id) AS ja_deu_baze
             FROM posts p
             INNER JOIN follows f ON f.seguido_id = p.user_id
+            INNER JOIN users u ON u.id = p.user_id
             WHERE f.seguidor_id = :user_id
             AND f.status = 'aceite'
             AND p.eliminado = false
@@ -105,24 +113,28 @@ class PostRepository implements IPostRepository
         ";
 
         $stmt = $this->conn->prepare($sql);
-        $stmt->bindValue(":user_id", $userId);
-        $stmt->bindValue(":limit",   $limit,  PDO::PARAM_INT);
-        $stmt->bindValue(":offset",  $offset, PDO::PARAM_INT);
+        $stmt->bindValue(":user_id",      $userId);
+        $stmt->bindValue(":auth_user_id", $authUserId);
+        $stmt->bindValue(":limit",        $limit,  PDO::PARAM_INT);
+        $stmt->bindValue(":offset",       $offset, PDO::PARAM_INT);
         $stmt->execute();
 
         return array_map([$this, 'mapToDTO'], $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    // ============================================================
-    // FEED PÚBLICO (quando não segue ninguém)
-    // ============================================================
-
-    public function getPublicFeed(int $page, int $limit): array
+    public function getPublicFeed(string $authUserId, int $page, int $limit): array
     {
         $offset = ($page - 1) * $limit;
 
         $sql = "
-            SELECT p.*
+            SELECT p.*,
+                u.nome AS autor_nome,
+                u.username AS autor_username,
+                u.foto_perfil AS autor_foto_perfil,
+                u.privacidade AS autor_privacidade,
+                (SELECT COUNT(*) FROM bazes WHERE post_id = p.id) AS total_bazes,
+                (SELECT COUNT(*) FROM comments WHERE post_id = p.id AND eliminado = false) AS total_comentarios,
+                (SELECT COUNT(*) > 0 FROM bazes WHERE post_id = p.id AND user_id = :auth_user_id) AS ja_deu_baze
             FROM posts p
             INNER JOIN users u ON u.id = p.user_id
             WHERE u.privacidade = 'publico'
@@ -133,34 +145,45 @@ class PostRepository implements IPostRepository
         ";
 
         $stmt = $this->conn->prepare($sql);
-        $stmt->bindValue(":limit",  $limit,  PDO::PARAM_INT);
-        $stmt->bindValue(":offset", $offset, PDO::PARAM_INT);
+        $stmt->bindValue(":auth_user_id", $authUserId);
+        $stmt->bindValue(":limit",        $limit,  PDO::PARAM_INT);
+        $stmt->bindValue(":offset",       $offset, PDO::PARAM_INT);
         $stmt->execute();
 
         return array_map([$this, 'mapToDTO'], $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
+
     // ============================================================
     // POSTS DE UM UTILIZADOR ESPECÍFICO
     // ============================================================
 
-    public function getFeedByUser(string $userId, int $page, int $limit): array
+   public function getFeedByUser(string $userId, string $authUserId, int $page, int $limit): array
     {
         $offset = ($page - 1) * $limit;
 
         $sql = "
-            SELECT *
-            FROM posts
-            WHERE user_id = :user_id
-            AND eliminado = false
-            ORDER BY criado_em DESC
+            SELECT p.*,
+                u.nome AS autor_nome,
+                u.username AS autor_username,
+                u.foto_perfil AS autor_foto_perfil,
+                u.privacidade AS autor_privacidade,
+                (SELECT COUNT(*) FROM bazes WHERE post_id = p.id) AS total_bazes,
+                (SELECT COUNT(*) FROM comments WHERE post_id = p.id AND eliminado = false) AS total_comentarios,
+                (SELECT COUNT(*) > 0 FROM bazes WHERE post_id = p.id AND user_id = :auth_user_id) AS ja_deu_baze
+            FROM posts p
+            INNER JOIN users u ON u.id = p.user_id
+            WHERE p.user_id = :user_id
+            AND p.eliminado = false
+            ORDER BY p.criado_em DESC
             LIMIT :limit OFFSET :offset
         ";
 
         $stmt = $this->conn->prepare($sql);
-        $stmt->bindValue(":user_id", $userId);
-        $stmt->bindValue(":limit",   $limit,  PDO::PARAM_INT);
-        $stmt->bindValue(":offset",  $offset, PDO::PARAM_INT);
+        $stmt->bindValue(":user_id",      $userId);
+        $stmt->bindValue(":auth_user_id", $authUserId);
+        $stmt->bindValue(":limit",        $limit,  PDO::PARAM_INT);
+        $stmt->bindValue(":offset",       $offset, PDO::PARAM_INT);
         $stmt->execute();
 
         return array_map([$this, 'mapToDTO'], $stmt->fetchAll(PDO::FETCH_ASSOC));
@@ -293,7 +316,8 @@ class PostRepository implements IPostRepository
             conteudo:      $data['conteudo'] ?? null,
             eliminado:     (bool) $data['eliminado'],
             criado_em:     $data['criado_em'],
-            atualizado_em: $data['atualizado_em']
+            atualizado_em: $data['atualizado_em'],
+            ja_deu_baze:   (bool) ($data['ja_deu_baze'] ?? false)
         );
     }
 }

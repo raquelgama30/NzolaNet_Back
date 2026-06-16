@@ -20,7 +20,7 @@ class PostController extends BaseController
 
     public function getMyPosts(string $userId, int $page, int $limit): void
     {
-        $posts = $this->service->getUserPosts($userId, $page, $limit);
+        $posts = $this->service->getUserPosts($userId, $authUserId, $page, $limit);
         $this->json(["success" => true, "data" => $posts]);
     }
 
@@ -48,7 +48,7 @@ class PostController extends BaseController
     }
     public function explore(int $page, int $limit): void
     {
-        $posts = $this->service->getExplore($page, $limit);
+        $posts = $this->service->getExplore($authUserId, $page, $limit);
 
         $this->json([
             "success" => true,

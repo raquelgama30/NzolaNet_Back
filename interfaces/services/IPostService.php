@@ -8,10 +8,10 @@ interface IPostService {
     public function delete(string $postId, string $authUserId): bool;
 
     /** @return PostComMediaDTO[] */
-    public function getFeed(string $userId, int $page, int $limit): array;
+    public function getFeed(string $userId,string $authUserId, int $page, int $limit): array;
 
     /** @return PostComMediaDTO[] */
-    public function getUserPosts(string $userId, int $page, int $limit): array;
+    public function getUserPosts(string $userId,string $authUserId, int $page, int $limit): array;
 
     /** @return PostComMediaDTO[] */
     public function getPostsDeUtilizador(
@@ -22,5 +22,5 @@ interface IPostService {
     ): array;
     public function getById(string $postId, string $authUserId): ?PostComMediaDTO;
     public function deleteByAdmin(string $postId): bool;
-    public function getExplore(int $page, int $limit): array;
+    public function getExplore(int $page,string $authUserId, int $limit): array;
 }

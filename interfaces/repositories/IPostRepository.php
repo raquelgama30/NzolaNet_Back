@@ -14,6 +14,7 @@ interface IPostRepository {
     /** @return PostDTO[] */
     public function getFollowingFeed(
         string $userId,
+        string $authUserId, 
         int $page,
         int $limit
     ): array;
@@ -21,6 +22,7 @@ interface IPostRepository {
     /** Posts de perfis públicos */
     /** @return PostDTO[] */
     public function getPublicFeed(
+        string $authUserId, 
         int $page,
         int $limit
     ): array;
@@ -29,6 +31,7 @@ interface IPostRepository {
     /** @return PostDTO[] */
     public function getFeedByUser(
         string $userId,
+        string $authUserId, 
         int $page,
         int $limit
     ): array;

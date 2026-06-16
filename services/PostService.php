@@ -19,22 +19,22 @@ class PostService extends BaseService implements IPostService
         IUserRepository      $userRepository,
         IPostShareRepository $postShareRepository
     ) {
-        $this->postRepository    = $postRepository;
-        $this->mediaRepository   = $mediaRepository;
-        $this->bazeRepository    = $bazeRepository;
-        $this->commentRepository = $commentRepository;
-        $this->userRepository    = $userRepository;
+        $this->postRepository      = $postRepository;
+        $this->mediaRepository     = $mediaRepository;
+        $this->bazeRepository      = $bazeRepository;
+        $this->commentRepository   = $commentRepository;
+        $this->userRepository      = $userRepository;
         $this->postShareRepository = $postShareRepository;
     }
 
     public function create(string $userId, PostDTO $dto): bool
     {
         $post = new Post(
-            id: $this->generateUUID(),
-            user_id: $userId,
-            conteudo: $dto->conteudo,
-            eliminado: false,
-            criado_em: date("Y-m-d H:i:s"),
+            id:            $this->generateUUID(),
+            user_id:       $userId,
+            conteudo:      $dto->conteudo,
+            eliminado:     false,
+            criado_em:     date("Y-m-d H:i:s"),
             atualizado_em: date("Y-m-d H:i:s")
         );
         return $this->postRepository->create($post);
@@ -48,31 +48,31 @@ class PostService extends BaseService implements IPostService
         $podeVer = $this->postRepository->podeVerPosts($authUserId, $post->user_id);
         if (!$podeVer) return null;
 
-        return $this->enriquecerComMedia($post);
+        return $this->enriquecerComMedia($post, $authUserId);
     }
 
-public function getFeed(string $userId, int $page, int $limit): array
-{
-    $followingPosts = $this->postRepository->getFollowingFeed($userId, $page, $limit);
-    $publicPosts    = $this->postRepository->getPublicFeed($page, $limit);
-
-    $posts = array_merge($followingPosts, $publicPosts);
-
-    usort($posts, fn($a, $b) => strtotime($b->criado_em) <=> strtotime($a->criado_em));
-
-    return array_map([$this, 'enriquecerComMedia'], $posts);
-}
-    public function getExplore(int $page, int $limit): array
+    public function getFeed(string $userId, int $page, int $limit): array
     {
-        $posts = $this->postRepository->getPublicFeed($page, $limit);
+        $followingPosts = $this->postRepository->getFollowingFeed($userId, $userId, $page, $limit);
+        $publicPosts    = $this->postRepository->getPublicFeed($userId, $page, $limit);
 
-        return array_map([$this, 'enriquecerComMedia'], $posts);
+        $posts = array_merge($followingPosts, $publicPosts);
+
+        usort($posts, fn($a, $b) => strtotime($b->criado_em) <=> strtotime($a->criado_em));
+
+        return array_map(fn($post) => $this->enriquecerComMedia($post, $userId), $posts);
     }
 
-    public function getUserPosts(string $userId, int $page, int $limit): array
+    public function getExplore(string $authUserId, int $page, int $limit): array
     {
-        $posts = $this->postRepository->getFeedByUser($userId, $page, $limit);
-        return array_map([$this, 'enriquecerComMedia'], $posts);
+        $posts = $this->postRepository->getPublicFeed($authUserId, $page, $limit);
+        return array_map(fn($post) => $this->enriquecerComMedia($post, $authUserId), $posts);
+    }
+
+    public function getUserPosts(string $userId, string $authUserId, int $page, int $limit): array
+    {
+        $posts = $this->postRepository->getFeedByUser($userId, $authUserId, $page, $limit);
+        return array_map(fn($post) => $this->enriquecerComMedia($post, $authUserId), $posts);
     }
 
     public function getPostsDeUtilizador(
@@ -84,32 +84,34 @@ public function getFeed(string $userId, int $page, int $limit): array
         $podeVer = $this->postRepository->podeVerPosts($authUserId, $targetUserId);
         if (!$podeVer) return [];
 
-        $posts = $this->postRepository->getFeedByUser($targetUserId, $page, $limit);
-        return array_map([$this, 'enriquecerComMedia'], $posts);
+        $posts = $this->postRepository->getFeedByUser($targetUserId, $authUserId, $page, $limit);
+        return array_map(fn($post) => $this->enriquecerComMedia($post, $authUserId), $posts);
     }
 
-    private function enriquecerComMedia(PostDTO $post): PostComMediaDTO
+    private function enriquecerComMedia(PostDTO $post, string $authUserId = ''): PostComMediaDTO
     {
-        $autor = $this->userRepository->findById($post->user_id);
+        $autor      = $this->userRepository->findById($post->user_id);
         $mediaArray = $this->mediaRepository->findByPost($post->id);
-        $media = $mediaArray[0] ?? null;
+        $media      = $mediaArray[0] ?? null;
 
         $totalBazes       = $this->bazeRepository->countByPost($post->id);
         $totalComentarios = $this->commentRepository->countByPost($post->id);
+        $jaDeuBaze        = $authUserId ? $this->bazeRepository->exists($authUserId, $post->id) : false;
 
         return new PostComMediaDTO(
-            id: $post->id,
-            user_id: $post->user_id,
-            autor_nome: $autor?->nome          ?? "Utilizador removido",
-            autor_username: $autor?->username       ?? null,
+            id:                $post->id,
+            user_id:           $post->user_id,
+            autor_nome:        $autor?->nome          ?? "Utilizador removido",
+            autor_username:    $autor?->username       ?? null,
             autor_foto_perfil: $autor?->foto_perfil    ?? null,
-            conteudo: $post->conteudo,
-            eliminado: $post->eliminado,
-            criado_em: $post->criado_em,
-            atualizado_em: $post->atualizado_em,
-            total_bazes: $totalBazes,
+            conteudo:          $post->conteudo,
+            eliminado:         $post->eliminado,
+            criado_em:         $post->criado_em,
+            atualizado_em:     $post->atualizado_em,
+            total_bazes:       $totalBazes,
             total_comentarios: $totalComentarios,
-            media: $media
+            media:             $media,
+            ja_deu_baze:       $jaDeuBaze
         );
     }
 
@@ -135,7 +137,6 @@ public function getFeed(string $userId, int $page, int $limit): array
         return $this->postRepository->update($postId, $dto);
     }
 
-    // DELETE do utilizador (verifica ownership)
     public function delete(string $postId, string $authUserId): bool
     {
         $post = $this->postRepository->findById($postId);
@@ -145,7 +146,6 @@ public function getFeed(string $userId, int $page, int $limit): array
         return $this->executarDeleteCompleto($postId);
     }
 
-    // DELETE do admin (bypass ownership)
     public function deleteByAdmin(string $postId): bool
     {
         $post = $this->postRepository->findById($postId);
@@ -154,22 +154,18 @@ public function getFeed(string $userId, int $page, int $limit): array
         return $this->executarDeleteCompleto($postId);
     }
 
-    // Método privado que executa a cascata completa
     private function executarDeleteCompleto(string $postId): bool
     {
-        // 1. Apagar TODOS os ficheiros físicos de media
         $mediaArray = $this->mediaRepository->findByPost($postId);
         foreach ($mediaArray as $media) {
             $this->apagarFicheiro($media->url);
         }
         $this->mediaRepository->deleteByPost($postId);
 
-        // 2. Apagar interações
         $this->bazeRepository->deleteByPost($postId);
         $this->commentRepository->deleteByPost($postId);
-        $this->postShareRepository->deleteByPost($postId);  // NOVO: apaga shares
+        $this->postShareRepository->deleteByPost($postId);
 
-        // 3. Soft delete do post
         return $this->postRepository->delete($postId);
     }
 }

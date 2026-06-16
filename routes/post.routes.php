@@ -76,11 +76,10 @@ switch ($action) {
         $controller->feed($authUser->id, $page, $limit);
         break;
     // GET ?route=post&action=explore&page=1&limit=10
-    case 'explore':
+   case 'explore':
         $page  = (int) ($_GET['page'] ?? 1);
         $limit = (int) ($_GET['limit'] ?? 1000);
-
-        $controller->explore($page, $limit);
+        $controller->explore($authUser->id, $page, $limit);
         break;
 
     case 'obterPorId':

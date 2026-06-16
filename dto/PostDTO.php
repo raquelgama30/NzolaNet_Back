@@ -10,6 +10,7 @@ class PostDTO {
         public ?string $conteudo,
         public bool $eliminado,
         public string $criado_em,
-        public string $atualizado_em
+        public string $atualizado_em,
+        public bool $ja_deu_baze = false
     ) {}
 }
