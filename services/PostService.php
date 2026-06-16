@@ -51,9 +51,9 @@ class PostService extends BaseService implements IPostService
         return $this->enriquecerComMedia($post, $authUserId);
     }
 
-    public function getFeed(string $userId, int $page, int $limit): array
+    public function getFeed(string $userId, string $authUserId, int $page, int $limit): array
     {
-        $followingPosts = $this->postRepository->getFollowingFeed($userId, $userId, $page, $limit);
+        $followingPosts = $this->postRepository->getFollowingFeed($userId, $authUserId, $page, $limit);
         $publicPosts    = $this->postRepository->getPublicFeed($userId, $page, $limit);
 
         $posts = array_merge($followingPosts, $publicPosts);
