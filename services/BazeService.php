@@ -72,4 +72,9 @@ class BazeService extends BaseService implements IBazeService
     {
         return $this->bazeRepository->getByPost($postId);
     }
+
+    public function hasLiked(string $userId, string $postId): bool
+    {
+        return $this->bazeRepository->exists($userId, $postId);
+    }
 }

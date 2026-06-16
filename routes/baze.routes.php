@@ -24,6 +24,11 @@ switch ($action) {
         $postId = $_GET['post_id'] ?? '';
         $controller->count($postId);
         break;
+    
+    case 'hasLiked':
+        $postId = $_GET['post_id'] ?? '';
+        $controller->hasLiked($authUser->id, $postId);
+    break;
 
     default:
         http_response_code(400);

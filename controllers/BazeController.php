@@ -45,4 +45,14 @@ class BazeController extends BaseController
             "data"    => ["total" => $total]
         ]);
     }
+
+    public function hasLiked(string $userId, string $postId): void
+    {
+        $result = $this->service->hasLiked($userId, $postId);
+
+        $this->json([
+            "success" => true,
+            "data"    => ["liked" => $result]
+        ]);
+    }
 }
