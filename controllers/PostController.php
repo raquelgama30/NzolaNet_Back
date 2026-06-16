@@ -18,14 +18,12 @@ class PostController extends BaseController
         ], $result ? 201 : 400);
     }
 
-    public function getMyPosts(string $userId, int $page, int $limit): void
+    public function getMyPosts(string $userId, string $authUserId, int $page, int $limit): void
     {
         $posts = $this->service->getUserPosts($userId, $authUserId, $page, $limit);
         $this->json(["success" => true, "data" => $posts]);
     }
 
-    // Ver posts de outro utilizador
-    // Só mostra se: perfil público OU eu sigo esse utilizador
     public function getPostsDeUtilizador(
         string $authUserId,
         string $targetUserId,
@@ -43,18 +41,16 @@ class PostController extends BaseController
 
     public function feed(string $userId, int $page, int $limit): void
     {
-        $posts = $this->service->getFeed($userId, $page, $limit);
+        $posts = $this->service->getFeed($userId, $userId, $page, $limit);
         $this->json(["success" => true, "data" => $posts]);
     }
-    public function explore(int $page, int $limit): void
+
+    public function explore(string $authUserId, int $page, int $limit): void
     {
         $posts = $this->service->getExplore($authUserId, $page, $limit);
-
-        $this->json([
-            "success" => true,
-            "data" => $posts
-        ]);
+        $this->json(["success" => true, "data" => $posts]);
     }
+
     public function getById(string $id, string $authUserId): void
     {
         $post = $this->service->getById($id, $authUserId);
