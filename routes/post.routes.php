@@ -55,7 +55,7 @@ switch ($action) {
     case 'meusPosts':
         $page  = (int) ($_GET['page']  ?? 1);
         $limit = (int) ($_GET['limit'] ?? 1000);
-        $controller->getMyPosts($authUser->id, $page, $limit);
+        $controller->getMyPosts($authUser->id, $authUser->id, $page, $limit);
         break;
 
     // GET ?route=post&action=postsDeUtilizador&user_id=XXX&page=1&limit=10
