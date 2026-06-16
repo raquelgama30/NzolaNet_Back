@@ -178,8 +178,29 @@ class PostRepository implements IPostRepository
     // VERIFICAR PRIVACIDADE
     // ============================================================
 
-    public function podeVerPosts(string $authUserId, string $targetUserId): bool
+   public function podeVerPosts(string $authUserId, string $targetUserId): bool
     {
+        // O próprio utilizador pode ver os seus posts
+        if ($authUserId === $targetUserId) {
+            return true;
+        }
+
+        // Verificar se é administrador
+        $stmt = $this->conn->prepare("
+            SELECT is_admin
+            FROM users
+            WHERE id = :id
+        ");
+
+        $stmt->execute([':id' => $authUserId]);
+
+        $isAdmin = $stmt->fetchColumn();
+
+        if ($isAdmin) {
+            return true;
+        }
+
+        // Lógica normal
         $sql = "
             SELECT COUNT(*)
             FROM users u
@@ -196,13 +217,12 @@ class PostRepository implements IPostRepository
 
         $stmt = $this->conn->prepare($sql);
         $stmt->execute([
-            ":auth_id"   => $authUserId,
-            ":target_id" => $targetUserId
+            ':auth_id'   => $authUserId,
+            ':target_id' => $targetUserId
         ]);
 
         return $stmt->fetchColumn() > 0;
     }
-
     // ============================================================
     // SHARES
     // ============================================================

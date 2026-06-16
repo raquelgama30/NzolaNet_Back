@@ -19,7 +19,7 @@ switch ($action) {
             "success" => true,
             "data" => $adminService->getAdminMetrics()
         ]);
-        exit;
+        break;
     // PUT ?route=admin&action=ativarUtilizador
     case 'ativarUtilizador':
         $id = $input['id'] ?? '';
